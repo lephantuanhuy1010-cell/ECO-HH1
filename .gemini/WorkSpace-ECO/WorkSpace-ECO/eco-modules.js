@@ -899,182 +899,23 @@ const POModule = {
     inp.type = 'file'; inp.accept = '.xlsx,.xls';
     inp.onchange = async (e) => {
       const file = e.target.files[0]; if (!file) return;
-      ECO_UI.toast('Đang đọc file Excel vật tư PO...', 'info');
+      ECO_UI.toast('Đang đọc file Excel...', 'info');
       try {
         await _loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(new Uint8Array(buf), { type: 'array' });
         
-        // Quét tìm sheet chứa danh sách vật tư phù hợp từ khóa
-        let sheet = null;
-        let sheetName = '';
-        for (const name of wb.SheetNames) {
-          const tempSheet = wb.Sheets[name];
-          const tempRows = XLSX.utils.sheet_to_json(tempSheet, { header: 1, defval: '' });
-          const hasHeaders = tempRows.some(row => {
-            const joined = row.map(c => String(c).toUpperCase()).join('|');
-            return /KHỐI LƯỢNG ĐẶT HÀNG|SỐ LƯỢNG|MÃ VẬT LIỆU|MÔ TẢ|ĐƠN VỊ|KHU VỰC|QUANTITY|CODE|QTY/.test(joined);
-          });
-          if (hasHeaders) {
-            sheet = tempSheet;
-            sheetName = name;
-            break;
-          }
-        }
-        
-        if (!sheet) {
-          sheet = wb.Sheets[wb.SheetNames[0]];
-          sheetName = wb.SheetNames[0];
-        }
-
-        const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-
-        // Tìm dòng tiêu đề chứa các keyword của cột
-        let hdrIdx = -1;
-        for (let i = 0; i < Math.min(rows.length, 20); i++) {
-          const joined = rows[i].map(c => String(c).toUpperCase()).join('|');
-          if (/KHỐI LƯỢNG ĐẶT HÀNG|SỐ LƯỢNG|MÃ VẬT LIỆU|MÔ TẢ|ĐƠN VỊ|KHU VỰC|QUANTITY|CODE|QTY/.test(joined)) {
-            hdrIdx = i;
-            break;
-          }
-        }
-
-        if (hdrIdx === -1) hdrIdx = 0;
-
-        const header = rows[hdrIdx].map(c => String(c).trim().toUpperCase());
-        const colCode = header.findIndex(c => c === 'MÃ VẬT LIỆU' || c === 'MÃ VẬT TƯ' || c === 'MÃ' || c.includes('CODE'));
-        const colName = header.findIndex(c => c === 'MÔ TẢ' || c === 'TÊN VẬT TƯ' || c === 'TÊN' || c.includes('DESCRIPTION') || c.includes('NAME'));
-        const colQty = header.findIndex(c => c === 'KHỐI LƯỢNG ĐẶT HÀNG' || c === 'SỐ LƯỢNG' || c === 'SL' || c.includes('QUANTITY') || c.includes('QTY') || c.includes('KL'));
-        const colArea = header.findIndex(c => c === 'KHU VỰC THI CÔNG' || c === 'KHU VỰC' || c.includes('AREA'));
-        const colNote = header.findIndex(c => c === 'GHI CHÚ' || c === 'QUY CÁCH' || c.includes('NOTE'));
-        const colUnit = header.findIndex(c => c === 'ĐƠN VỊ' || c === 'ĐVT' || c.includes('UNIT'));
-
-        if (colQty === -1 || (colCode === -1 && colName === -1)) {
-          ECO_UI.toast('Không tìm thấy cột Số lượng hoặc Mô tả vật tư trong file Excel.', 'error');
+        const sheetNames = wb.SheetNames;
+        if (sheetNames.length === 0) {
+          ECO_UI.toast('File Excel không có sheet nào!', 'error');
           return;
         }
 
-        const allMats = ECO_Storage.getMaterials();
-        let successCount = 0;
-        let failCount = 0;
-
-        function cleanText(txt) {
-          return String(txt || '').normalize('NFC').toLowerCase().replace(/[\s\-\.\_]/g, '');
+        if (sheetNames.length === 1) {
+          POModule._processPOImportSheet(wb, sheetNames[0]);
+        } else {
+          POModule._showSheetSelectorModal(wb);
         }
-
-        for (let i = hdrIdx + 1; i < rows.length; i++) {
-          const r = rows[i]; if (!r || r.length === 0) continue;
-          const code = colCode !== -1 ? String(r[colCode] || '').trim() : '';
-          const name = colName !== -1 ? String(r[colName] || '').trim() : '';
-          const qty = colQty !== -1 ? parseFloat(String(r[colQty]).replace(/,/g, '')) : 0;
-          const area = colArea !== -1 ? String(r[colArea] || '').trim() : 'Chung';
-          const note = colNote !== -1 ? String(r[colNote] || '').trim() : 'Tiêu chuẩn';
-          const unit = colUnit !== -1 ? String(r[colUnit] || '').trim() : 'mét';
-
-          if (isNaN(qty) || qty <= 0) continue;
-          if (!code && !name) continue;
-
-          // 1. Tìm khớp theo Mã Vật Tư (Bỏ qua khoảng trắng và ký tự đặc biệt)
-          let matched = null;
-          if (code) {
-            const cleanCodeStr = cleanText(code);
-            matched = allMats.find(m => m.code && cleanText(m.code) === cleanCodeStr);
-          }
-
-          // 2. Tìm khớp theo Tên mô tả (nếu chưa khớp mã)
-          if (!matched && name) {
-            const cleanName = cleanText(name);
-            matched = allMats.find(m => {
-              const cleanMName = cleanText(m.name);
-              return (cleanMName === cleanName) || 
-                     (cleanMName.includes(cleanName) && cleanName.length > 4) ||
-                     (cleanName.includes(cleanMName) && cleanMName.length > 4);
-            });
-          }
-
-          // 3. Tự động tạo vật tư mới nếu hoàn toàn chưa tồn tại trong danh mục
-          if (!matched) {
-            const nextMatId = ECO_Storage.nextId(allMats);
-            const newMat = {
-              id: nextMatId,
-              code: code || ('MAT-' + nextMatId),
-              name: name || 'Vật tư mới',
-              unit: unit || 'm',
-              system: document.getElementById('m-system')?.value || 'Tổng hợp'
-            };
-            allMats.push(newMat);
-            await ECO_Storage.saveMaterials(allMats);
-            matched = newMat;
-            console.log(`[AutoCreate] Tự động thêm vật tư mới từ Excel: [${newMat.code}] ${newMat.name}`);
-          }
-
-          if (matched) {
-            const rowEls = document.querySelectorAll('.supplier-mat-row');
-            let found = false;
-            rowEls.forEach(row => {
-              const matId = parseInt(row.querySelector('.item-mat-id').value);
-              if (matId === matched.id) {
-                const cb = row.querySelector('.po-item-check');
-                cb.checked = true;
-                const qtyInput = row.querySelector('.item-qty');
-                qtyInput.disabled = false;
-                qtyInput.value = qty;
-                
-                // Cập nhật khu vực thi công và ghi chú
-                const areaInput = row.querySelector('.item-area');
-                if (areaInput && area !== 'Chung') areaInput.value = area;
-                
-                const varInput = row.querySelector('.item-var');
-                if (varInput) varInput.value = note;
-
-                // Cập nhật text hiển thị khu vực (cột thứ 4)
-                const areaTd = row.cells[3];
-                if (areaTd) areaTd.textContent = area !== 'Chung' ? area : areaTd.textContent;
-
-                found = true;
-              }
-            });
-
-            if (!found) {
-              const tbody = document.getElementById('po-items-body');
-              if (tbody.rows.length === 1 && tbody.rows[0].cells.length === 1) {
-                tbody.innerHTML = '';
-              }
-              const tr = document.createElement('tr');
-              tr.className = 'po-item-row custom-mat-row';
-              tr.innerHTML = `
-                <td style="padding:8px 6px;text-align:center;">
-                  <input type="checkbox" class="po-item-check" checked style="pointer-events:none;width:16px;height:16px;">
-                </td>
-                <td style="padding:8px 6px;" colspan="2">
-                  <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;" onchange="POModule.updateItemArea(this)">
-                    ${allMats.map(m => `<option value="${m.id}" data-code="${m.code}" data-name="${m.name}" ${m.id === matched.id ? 'selected' : ''}>[${m.code}] ${m.name} (${m.unit})</option>`).join('')}
-                  </select>
-                </td>
-                <td style="padding:8px 6px;">
-                  <input type="text" class="eco-input item-area-text" value="${area}" style="font-size:0.85rem;margin:0;padding:4px 8px;width:100%;">
-                  <select class="eco-select item-area-select" style="font-size:0.85rem;width:100%;display:none;">
-                    <option value="${matched.id}">${area}</option>
-                  </select>
-                </td>
-                <td style="padding:8px 6px;">
-                  <input type="number" class="eco-input item-qty" value="${qty}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;margin:0;padding:4px 8px;width:100%;">
-                  <input type="hidden" class="item-var" value="${note}">
-                  <input type="hidden" class="item-mat-id" value="${matched.id}">
-                  <input type="hidden" class="item-area" value="${area}">
-                </td>
-                <td style="padding:8px 6px;text-align:center;font-size:0.85rem;color:#475569;">${matched.unit || '—'}</td>
-              `;
-              tbody.appendChild(tr);
-            }
-            successCount++;
-          } else {
-            failCount++;
-          }
-        }
-
-        if (window.lucide && lucide.createIcons) lucide.createIcons();
-        ECO_UI.toast(`Đã import thành công ${successCount} vật tư! (Bỏ qua ${failCount} vật tư không khớp)`, 'success');
       } catch (err) {
         console.error(err);
         ECO_UI.toast('Lỗi đọc file: ' + err.message, 'error');
@@ -1083,7 +924,200 @@ const POModule = {
     inp.click();
   },
 
-  async _savePO(editId = null) {
+  _showSheetSelectorModal(wb) {
+    const options = wb.SheetNames.map(name => `<option value="${name}">${name}</option>`).join('');
+    window._tempImportWb = wb;
+
+    ECO_UI.openModal(
+      'Chọn Sheet để nhập dữ liệu',
+      `
+      <div class="eco-form-group">
+        <label style="font-weight:600;color:#475569;margin-bottom:8px;display:block;">File Excel có nhiều Sheet. Vui lòng chọn Sheet chứa danh sách vật tư cần import *</label>
+        <select id="m-import-sheet-select" class="eco-select">
+          ${options}
+        </select>
+      </div>
+      `,
+      `
+      <button onclick="ECO_UI.closeModal(); delete window._tempImportWb;" class="btn btn-outline" style="padding:9px 20px;">Hủy</button>
+      <button onclick="POModule._confirmSheetImport()" class="btn btn-primary" style="padding:9px 20px;">✓ Nhập dữ liệu</button>
+      `,
+      { size: 'md' }
+    );
+  },
+
+  _confirmSheetImport() {
+    const select = document.getElementById('m-import-sheet-select');
+    const sheetName = select ? select.value : '';
+    const wb = window._tempImportWb;
+    
+    if (!sheetName || !wb) {
+      ECO_UI.toast('Không tìm thấy dữ liệu Sheet hoặc file!', 'error');
+      return;
+    }
+
+    ECO_UI.closeModal();
+    delete window._tempImportWb;
+    
+    this._processPOImportSheet(wb, sheetName);
+  },
+
+  async _processPOImportSheet(wb, sheetName) {
+    ECO_UI.toast('Đang xử lý sheet "' + sheetName + '"...', 'info');
+    try {
+      const sheet = wb.Sheets[sheetName];
+      const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+      
+      let hdrIdx = -1;
+      for (let i = 0; i < Math.min(rows.length, 20); i++) {
+        const joined = rows[i].map(c => String(c).toUpperCase()).join('|');
+        if (/KHỐI LƯỢNG ĐẶT HÀNG|SỐ LƯỢNG|MÃ VẬT LIỆU|MÔ TẢ|ĐƠN VỊ|KHU VỰC|QUANTITY|CODE|QTY/.test(joined)) {
+          hdrIdx = i;
+          break;
+        }
+      }
+
+      if (hdrIdx === -1) hdrIdx = 0;
+
+      const header = rows[hdrIdx].map(c => String(c).trim().toUpperCase());
+      const colCode = header.findIndex(c => c === 'MÃ VẬT LIỆU' || c === 'MÃ VẬT TƯ' || c === 'MÃ' || c.includes('CODE'));
+      const colName = header.findIndex(c => c === 'MÔ TẢ' || c === 'TÊN VẬT TƯ' || c === 'TÊN' || c.includes('DESCRIPTION') || c.includes('NAME'));
+      const colQty = header.findIndex(c => c === 'KHỐI LƯỢNG ĐẶT HÀNG' || c === 'SỐ LƯỢNG' || c === 'SL' || c.includes('QUANTITY') || c.includes('QTY') || c.includes('KL'));
+      const colArea = header.findIndex(c => c === 'KHU VỰC THI CÔNG' || c === 'KHU VỰC' || c.includes('AREA'));
+      const colNote = header.findIndex(c => c === 'GHI CHÚ' || c === 'QUY CÁCH' || c.includes('NOTE'));
+      const colUnit = header.findIndex(c => c === 'ĐƠN VỊ' || c === 'ĐVT' || c.includes('UNIT'));
+
+      if (colQty === -1 || (colCode === -1 && colName === -1)) {
+        ECO_UI.toast('Không tìm thấy cột Số lượng hoặc Mô tả vật tư trong sheet "' + sheetName + '".', 'error');
+        return;
+      }
+
+      const allMats = ECO_Storage.getMaterials();
+      let successCount = 0;
+      let failCount = 0;
+
+      function cleanText(txt) {
+        return String(txt || '').normalize('NFC').toLowerCase().replace(/[\s\-\.\_]/g, '');
+      }
+
+      const newMatsToDeclare = [];
+
+      for (let i = hdrIdx + 1; i < rows.length; i++) {
+        const r = rows[i]; if (!r || r.length === 0) continue;
+        const code = colCode !== -1 ? String(r[colCode] || '').trim() : '';
+        const name = colName !== -1 ? String(r[colName] || '').trim() : '';
+        const qty = colQty !== -1 ? parseFloat(String(r[colQty]).replace(/,/g, '')) : 0;
+        const area = colArea !== -1 ? String(r[colArea] || '').trim() : 'Chung';
+        const note = colNote !== -1 ? String(r[colNote] || '').trim() : 'Tiêu chuẩn';
+        const unit = colUnit !== -1 ? String(r[colUnit] || '').trim() : 'cái';
+
+        if (isNaN(qty) || qty <= 0) continue;
+        if (!code && !name) continue;
+
+        let matched = null;
+        if (code) {
+          const cleanCodeStr = cleanText(code);
+          matched = allMats.find(m => m.code && cleanText(m.code) === cleanCodeStr);
+        }
+
+        if (!matched && name) {
+          const cleanName = cleanText(name);
+          matched = allMats.find(m => {
+            const cleanMName = cleanText(m.name);
+            return (cleanMName === cleanName) || 
+                   (cleanMName.includes(cleanName) && cleanName.length > 4) ||
+                   (cleanName.includes(cleanMName) && cleanMName.length > 4);
+          });
+        }
+
+        if (!matched) {
+          const nextMatId = ECO_Storage.nextId([...allMats, ...newMatsToDeclare]);
+          const newMat = {
+            id: nextMatId,
+            code: code || ('MAT-' + nextMatId),
+            name: name || 'Vật tư mới',
+            unit: unit || 'cái',
+            system: document.getElementById('m-system')?.value || 'Tổng hợp'
+          };
+          newMatsToDeclare.push(newMat);
+          matched = newMat;
+          console.log(`[AutoCreate] Tự động thêm vật tư mới từ Excel: [${newMat.code}] ${newMat.name}`);
+        }
+
+        if (matched) {
+          const rowEls = document.querySelectorAll('.supplier-mat-row');
+          let found = false;
+          rowEls.forEach(row => {
+            const matId = parseInt(row.querySelector('.item-mat-id').value);
+            if (matId === matched.id) {
+              const cb = row.querySelector('.po-item-check');
+              cb.checked = true;
+              const qtyInput = row.querySelector('.item-qty');
+              qtyInput.disabled = false;
+              qtyInput.value = qty;
+              
+              const areaInput = row.querySelector('.item-area');
+              if (areaInput && area !== 'Chung') areaInput.value = area;
+              
+              const varInput = row.querySelector('.item-var');
+              if (varInput) varInput.value = note;
+
+              const areaTd = row.cells[3];
+              if (areaTd) areaTd.textContent = area !== 'Chung' ? area : areaTd.textContent;
+
+              found = true;
+            }
+          });
+
+          if (!found) {
+            const tbody = document.getElementById('po-items-body');
+            if (tbody.rows.length === 1 && tbody.rows[0].cells.length === 1) {
+              tbody.innerHTML = '';
+            }
+            const tr = document.createElement('tr');
+            tr.className = 'po-item-row custom-mat-row';
+            tr.innerHTML = `
+              <td style="padding:8px 6px;text-align:center;">
+                <input type="checkbox" class="po-item-check" checked style="pointer-events:none;width:16px;height:16px;">
+              </td>
+              <td style="padding:8px 6px;" colspan="2">
+                <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;" onchange="POModule.updateItemArea(this)">
+                  ${[...allMats, ...newMatsToDeclare].map(m => `<option value="${m.id}" data-code="${m.code}" data-name="${m.name}" ${m.id === matched.id ? 'selected' : ''}>[${m.code}] ${m.name} (${m.unit})</option>`).join('')}
+                </select>
+              </td>
+              <td style="padding:8px 6px;">
+                <input type="text" class="eco-input item-area-text" value="${area}" style="font-size:0.85rem;margin:0;padding:4px 8px;width:100%;">
+                <select class="eco-select item-area-select" style="font-size:0.85rem;width:100%;display:none;">
+                  <option value="${matched.id}">${area}</option>
+                </select>
+              </td>
+              <td style="padding:8px 6px;">
+                <input type="number" class="eco-input item-qty" value="${qty}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;margin:0;padding:4px 8px;width:100%;">
+                <input type="hidden" class="item-var" value="${note}">
+                <input type="hidden" class="item-mat-id" value="${matched.id}">
+                <input type="hidden" class="item-area" value="${area}">
+              </td>
+              <td style="padding:8px 6px;text-align:center;font-size:0.85rem;color:#475569;">${matched.unit || '—'}</td>
+            `;
+            tbody.appendChild(tr);
+          }
+          successCount++;
+        } else {
+          failCount++;
+        }
+      }
+
+      if (newMatsToDeclare.length > 0) {
+        await ECO_Storage.saveMaterials([...allMats, ...newMatsToDeclare]);
+      }
+
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+      ECO_UI.toast(`Đã import thành công ${successCount} vật tư! (Bỏ qua ${failCount} vật tư không khớp)`, 'success');
+    } catch (err) {
+      console.error(err);
+      ECO_UI.toast('Lỗi đọc file: ' + err.message, 'error');
+    }
+  },
     const poNo = document.getElementById('m-poNo').value.trim();
     const supplierId = document.getElementById('m-supplier').value;
     const system = document.getElementById('m-system').value;
