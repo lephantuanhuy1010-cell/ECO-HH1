@@ -1153,6 +1153,8 @@ const POModule = {
       ECO_UI.toast('Lỗi khi xuất file mẫu: ' + err.message, 'error');
     }
   },
+
+  async _savePO(editId = null) {
     const poNo = document.getElementById('m-poNo').value.trim();
     const supplierId = document.getElementById('m-supplier').value;
     const system = document.getElementById('m-system').value;
