@@ -630,9 +630,10 @@ const POModule = {
             </tbody>
           </table>
         </div>
-        <div style="display:flex;gap:10px;margin-top:10px;">
-          <button type="button" onclick="POModule._addCustomItemRow()" style="background:none;border:1px dashed rgba(0,86,255,0.3);border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#0056FF;cursor:pointer;flex:1;font-weight:600;font-family:inherit;">+ Chọn vật tư ngoài danh mục</button>
-          <button type="button" onclick="POModule._addManualItemRow()" style="background:none;border:1px dashed #10B981;border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#10B981;cursor:pointer;flex:1;font-weight:600;font-family:inherit;">+ Nhập vật tư</button>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap;">
+          <button type="button" onclick="POModule._addCustomItemRow()" style="background:none;border:1px dashed rgba(0,86,255,0.3);border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#0056FF;cursor:pointer;flex:1;min-width:180px;font-weight:600;font-family:inherit;">+ Chọn vật tư ngoài danh mục</button>
+          <button type="button" onclick="POModule._addManualItemRow()" style="background:none;border:1px dashed #10B981;border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#10B981;cursor:pointer;flex:1;min-width:140px;font-weight:600;font-family:inherit;">+ Nhập vật tư</button>
+          <button type="button" onclick="POModule.exportPOExcelTemplate()" style="background:none;border:1px dashed #475569;border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#475569;cursor:pointer;font-weight:600;font-family:inherit;"><i data-lucide="file-up" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Tải File Mẫu Excel</button>
           <button type="button" onclick="POModule.importPOItemsFromExcel()" style="background:none;border:1px dashed #D97706;border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#D97706;cursor:pointer;font-weight:600;font-family:inherit;"><i data-lucide="download" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Import Excel Vật tư</button>
         </div>
       </div>`,
@@ -1116,6 +1117,40 @@ const POModule = {
     } catch (err) {
       console.error(err);
       ECO_UI.toast('Lỗi đọc file: ' + err.message, 'error');
+    }
+  },
+
+  async exportPOExcelTemplate() {
+    ECO_UI.toast('Đang khởi tạo file mẫu Excel...', 'info');
+    try {
+      await _loadScript('https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js');
+      
+      const data = [
+        ['MÃ VẬT LIỆU', 'MÔ TẢ', 'ĐƠN VỊ', 'KHỐI LƯỢNG ĐẶT HÀNG', 'KHU VỰC THI CÔNG', 'GHI CHÚ'],
+        ['PN6', 'Ống uPVC D42', 'm', 1400, 'Tầng 4-7', 'Tiêu chuẩn'],
+        ['PN6', 'Ống uPVC D49', 'm', 836, 'Tầng 4-7', 'Tiêu chuẩn'],
+        ['PN8', 'Ống uPVC D110', 'm', 468, 'Tầng 4-8', 'Có bát nối'],
+        ['STEEL.D10', 'Thép CB 400V (SD390), D10', 'kg', 7500, 'Chung', 'Hàng nhập khẩu']
+      ];
+
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      ws['!cols'] = [
+        { wch: 15 },
+        { wch: 35 },
+        { wch: 10 },
+        { wch: 22 },
+        { wch: 20 },
+        { wch: 20 }
+      ];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Mau_Import_Vat_Tu");
+      
+      XLSX.writeFile(wb, "Mau_Import_Vat_Tu_PO.xlsx");
+      ECO_UI.toast('Đã tải xuống file mẫu Excel thành công!', 'success');
+    } catch (err) {
+      console.error(err);
+      ECO_UI.toast('Lỗi khi xuất file mẫu: ' + err.message, 'error');
     }
   },
     const poNo = document.getElementById('m-poNo').value.trim();
