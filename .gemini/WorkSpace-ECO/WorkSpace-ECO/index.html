@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ricons MEP Workspace - Dynamic High-Tech Workspace</title>
+  
+  <!-- Font -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- CSS -->
+  <link rel="stylesheet" href="design-system.css?v=15">
+
+  <!-- Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+</head>
+<body>
+
+  <!-- ==================== MÀNG HÌNH ĐĂNG NHẬP ==================== -->
+  <div id="eco-login-screen" style="display:flex; position:fixed; inset:0; z-index:99990; background:linear-gradient(135deg,#080f1f 0%,#0c1a32 55%,#150820 100%); align-items:center; justify-content:center; padding:20px;">
+
+    <!-- Mesh blobs -->
+    <div style="position:absolute;inset:0;overflow:hidden;pointer-events:none;">
+      <div style="position:absolute;width:720px;height:720px;border-radius:50%;background:radial-gradient(circle,rgba(227,24,55,0.16) 0%,transparent 70%);top:-260px;right:-180px;filter:blur(64px);"></div>
+      <div style="position:absolute;width:640px;height:640px;border-radius:50%;background:radial-gradient(circle,rgba(0,86,255,0.16) 0%,transparent 70%);bottom:-200px;left:-140px;filter:blur(64px);"></div>
+    </div>
+
+    <!-- Login card -->
+    <div style="position:relative;width:100%;max-width:400px;">
+      <div style="background:rgba(255,255,255,0.06);backdrop-filter:blur(32px) saturate(160%);-webkit-backdrop-filter:blur(32px) saturate(160%);border:1px solid rgba(255,255,255,0.1);border-radius:24px;box-shadow:0 48px 100px rgba(0,0,0,0.55),inset 0 1px 0 rgba(255,255,255,0.1);overflow:hidden;">
+
+        <!-- Top gradient accent -->
+        <div style="height:3px;background:linear-gradient(90deg,#0056FF 0%,#FF1E43 100%);"></div>
+
+        <div style="padding:40px 36px 36px;">
+
+          <!-- Brand -->
+          <div style="display:flex;align-items:center;gap:14px;margin-bottom:32px;">
+            <img src="Icon-Ricons.webp" alt="Ricons" style="width:42px;height:42px;object-fit:contain;flex-shrink:0;">
+            <div>
+              <div style="font-size:1.15rem;font-weight:800;color:#fff;letter-spacing:-0.02em;line-height:1.15;">MEP Workspace</div>
+              <div style="font-size:0.7rem;font-weight:600;color:rgba(255,255,255,0.4);letter-spacing:0.08em;margin-top:3px;text-transform:uppercase;">ECO Long An Project</div>
+            </div>
+          </div>
+
+          <!-- Heading -->
+          <h2 style="font-size:1.45rem;font-weight:700;color:#fff;letter-spacing:-0.02em;margin:0 0 28px;">Đăng nhập</h2>
+
+          <!-- Form -->
+          <form id="eco-login-form" onsubmit="ECO_Login.submit(event)" autocomplete="on">
+
+            <div style="margin-bottom:14px;">
+              <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Tên đăng nhập</label>
+              <input id="eco-login-email" type="text" placeholder="VD: admin" required
+                style="width:100%;box-sizing:border-box;padding:12px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:10px;font-size:0.88rem;color:#fff;font-family:inherit;outline:none;transition:border-color 0.2s,box-shadow 0.2s;"
+                onfocus="this.style.borderColor='rgba(0,86,255,0.65)';this.style.boxShadow='0 0 0 3px rgba(0,86,255,0.18)'"
+                onblur="this.style.borderColor='rgba(255,255,255,0.13)';this.style.boxShadow='none'">
+            </div>
+
+            <div style="margin-bottom:6px;">
+              <label style="display:block;font-size:0.7rem;font-weight:700;color:rgba(255,255,255,0.5);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:8px;">Mật khẩu</label>
+              <input id="eco-login-password" type="password" autocomplete="current-password" placeholder="••••••••" required
+                style="width:100%;box-sizing:border-box;padding:12px 14px;background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.13);border-radius:10px;font-size:0.88rem;color:#fff;font-family:inherit;outline:none;transition:border-color 0.2s,box-shadow 0.2s;"
+                onfocus="this.style.borderColor='rgba(0,86,255,0.65)';this.style.boxShadow='0 0 0 3px rgba(0,86,255,0.18)'"
+                onblur="this.style.borderColor='rgba(255,255,255,0.13)';this.style.boxShadow='none'">
+            </div>
+
+            <!-- Error -->
+            <div id="eco-login-error" style="display:none;margin-top:14px;padding:10px 14px;background:rgba(227,24,55,0.1);border:1px solid rgba(227,24,55,0.28);border-radius:8px;font-size:0.78rem;color:#ff7b8a;line-height:1.45;"></div>
+
+            <!-- Submit -->
+            <button type="submit" id="eco-login-btn"
+              style="width:100%;margin-top:22px;padding:13px;background:linear-gradient(90deg,#0056FF 0%,#E31837 100%);border:none;border-radius:10px;font-size:0.85rem;font-weight:800;color:#fff;font-family:inherit;cursor:pointer;letter-spacing:0.06em;text-transform:uppercase;transition:opacity 0.2s,transform 0.15s;box-shadow:0 8px 28px rgba(0,86,255,0.28);"
+              onmouseover="if(!this.disabled)this.style.opacity='0.88'"
+              onmouseout="this.style.opacity='1'"
+              onmousedown="this.style.transform='scale(0.98)'"
+              onmouseup="this.style.transform='scale(1)'">
+              Đăng nhập
+            </button>
+
+          </form>
+
+          <p style="margin:22px 0 0;text-align:center;font-size:0.68rem;color:rgba(255,255,255,0.2);line-height:1.5;">Ricons MEP Workspace &middot; ECO Long An &middot; Nội bộ<br>Copyright &copy; Ks. Quốc Bảo (0932705063)</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    var ECO_Login = {
+      _ERR: {
+        'Invalid login credentials': 'Tên đăng nhập hoặc mật khẩu không đúng.',
+        'Email not confirmed': 'Tài khoản chưa được xác nhận.',
+        'Too many requests': 'Quá nhiều lần thử đăng nhập. Vui lòng đợi và thử lại sau.',
+        'User not found': 'Tài khoản không tồn tại.',
+      },
+      submit: async function (e) {
+        e.preventDefault();
+        var email    = document.getElementById('eco-login-email').value.trim();
+        var password = document.getElementById('eco-login-password').value;
+        var btn      = document.getElementById('eco-login-btn');
+        var errEl    = document.getElementById('eco-login-error');
+
+        errEl.style.display = 'none';
+        btn.disabled = true;
+        btn.textContent = 'Đang xác thực...';
+
+        try {
+          await ECO_Session.signIn(email, password);
+        } catch (err) {
+          var raw = (err && err.message) || 'Đăng nhập thất bại.';
+          errEl.textContent = ECO_Login._ERR[raw] || raw;
+          errEl.style.display = 'block';
+          document.getElementById('eco-login-password').value = '';
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'Đăng nhập';
+        }
+      }
+    };
+  </script>
+
+  <!-- Global Gradient Defs for Lucide Icons (Electric Blue to Glowing Red) -->
+  <svg style="width:0;height:0;position:absolute;" aria-hidden="true" focusable="false">
+    <defs>
+      <linearGradient id="ricons-mep-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stop-color="#0056FF" /> <!-- Electric Blue -->
+        <stop offset="100%" stop-color="#FF1E43" /> <!-- Ricons Red -->
+      </linearGradient>
+    </defs>
+  </svg>
+
+  <!-- ==================== LAYER 0: BASE BACKGROUND & ENVIRONMENT ==================== -->
+  
+  <!-- Base Mesh Gradient Layer -->
+  <div class="mesh-bg">
+    <div class="mesh-blob blob-red"></div>
+    <div class="mesh-blob blob-blue"></div>
+  </div>
+
+  <!-- Technical Blueprint Watermark Container with 6 Crossfading High-Tech SVGs -->
+  <div class="blueprint-bg-container">
+    
+    <!-- SVG 1: Tiến độ thi công (Gantt timeline intersecting with an isometric structural building wireframe) -->
+    <svg id="bg-art-schedule" class="blueprint-bg active" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid-pattern-1" width="40" height="40" patternUnits="userSpaceOnUse">
+          <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(0, 86, 255, 0.15)" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid-pattern-1)" />
+      <!-- Isometric Building Columns & Slabs -->
+      <g stroke="rgba(0, 86, 255, 0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M150 450 L350 350 L550 450 L350 550 Z" />
+        <path d="M150 300 L350 200 L550 300 L350 400 Z" />
+        <path d="M150 450 L150 550" /><path d="M350 550 L350 650" /><path d="M550 450 L550 550" />
+        <path d="M150 300 L150 450" /><path d="M350 400 L350 550" /><path d="M550 300 L550 450" />
+        <path d="M350 200 L350 300" />
+      </g>
+      <!-- Intersecting Gantt timeline bars -->
+      <g stroke="rgba(227, 24, 55, 0.4)" stroke-width="1.5" stroke-linecap="round">
+        <rect x="420" y="150" width="180" height="15" rx="3" fill="none" stroke-dasharray="4 4"/>
+        <rect x="480" y="210" width="220" height="15" rx="3" fill="none" stroke-dasharray="4 4"/>
+        <path d="M600 157 L640 157 L640 210" stroke-dasharray="2 2" stroke="rgba(0, 86, 255, 0.4)"/>
+        <circle cx="640" cy="210" r="4" fill="#0056FF"/>
+      </g>
+    </svg>
+
+    <!-- SVG 2: Khối lượng thi công (Complex dimension lines, measurement grids, and geometric blocks) -->
+    <svg id="bg-art-boq" class="blueprint-bg" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <defs>
+        <pattern id="grid-pattern-2" width="20" height="20" patternUnits="userSpaceOnUse">
+          <path d="M 20 0 L 0 0 0 20" fill="none" stroke="rgba(0, 86, 255, 0.1)" stroke-width="0.5"/>
+        </pattern>
+      </defs>
+      <rect width="100%" height="100%" fill="url(#grid-pattern-2)" />
+      <!-- Dimension lines and geometric blocks -->
+      <g stroke="rgba(0, 86, 255, 0.35)" stroke-width="1.5" stroke-linecap="round">
+        <path d="M200 450 L320 380 L440 450 L320 520 Z" />
+        <path d="M200 450 L200 550 L320 620 L320 520 Z" />
+        <path d="M440 450 L440 550 L320 620" />
+        
+        <path d="M170 450 L170 550" stroke-dasharray="3 3"/>
+        <path d="M170 500 L150 500" />
+        <path d="M170 460 L165 450 M170 460 L175 450" />
+        <path d="M170 540 L165 550 M170 540 L175 550" />
+        
+        <text x="100" y="505" fill="rgba(0, 86, 255, 0.5)" font-family="monospace" font-size="11">H = 4.200m</text>
+        <text x="300" y="340" fill="rgba(0, 86, 255, 0.5)" font-family="monospace" font-size="11">W = 8.500m</text>
+        <text x="325" y="460" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="11">V = 145.5 m³</text>
+        
+        <circle cx="320" cy="380" r="4" fill="none" stroke="#E31837" stroke-width="1.5"/>
+        <circle cx="320" cy="520" r="4" fill="none" stroke="#E31837" stroke-width="1.5"/>
+      </g>
+    </svg>
+
+    <!-- SVG 3: Vật tư & Thiết bị (Schematic line-art of mechanical systems, pumps, or heavy equipment nodes) -->
+    <svg id="bg-art-materials" class="blueprint-bg" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="rgba(0, 86, 255, 0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="300" cy="400" r="50" fill="none" stroke-dasharray="4 4"/>
+        <circle cx="300" cy="400" r="30" fill="none"/>
+        <path d="M300 350 L300 450" /><path d="M250 400 L350 400" />
+        <path d="M350 400 L550 400 L550 250" />
+        <path d="M250 400 L100 400 L100 550" />
+        <path d="M475 390 L475 410 M465 400 L485 400" />
+        <polygon points="465,390 485,410 465,410 485,390" fill="none" stroke="rgba(227, 24, 55, 0.4)"/>
+        
+        <text x="360" y="430" fill="rgba(0, 86, 255, 0.5)" font-family="monospace" font-size="10">FLOW DIRECTION -> </text>
+        <text x="360" y="375" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">SYS-PUMP P_01</text>
+      </g>
+    </svg>
+
+    <!-- SVG 4: Hồ sơ trình duyệt (Abstract digital workflow nodes and stacked blueprint document outlines) -->
+    <svg id="bg-art-submittals" class="blueprint-bg" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="rgba(0, 86, 255, 0.35)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="200" y="380" width="120" height="150" rx="4" fill="none"/>
+        <path d="M205 385 L315 385" /><path d="M205 395 L270 395" />
+        
+        <rect x="220" y="400" width="120" height="150" rx="4" fill="none" stroke="rgba(227, 24, 55, 0.4)"/>
+        <path d="M225 405 L335 405" stroke="rgba(227, 24, 55, 0.4)"/>
+        
+        <path d="M400 450 L470 450 M550 450 L620 450" stroke-dasharray="4 4"/>
+        <circle cx="380" cy="450" r="15" fill="none"/>
+        <circle cx="510" cy="450" r="15" fill="none"/>
+        <circle cx="650" cy="450" r="15" fill="none" stroke="#00FF66"/>
+        
+        <text x="340" y="490" fill="rgba(0, 86, 255, 0.5)" font-family="monospace" font-size="10">1. SUBMIT</text>
+        <text x="480" y="490" fill="rgba(0, 86, 255, 0.5)" font-family="monospace" font-size="10">2. REVIEW</text>
+        <text x="610" y="490" fill="rgba(0, 255, 102, 0.5)" font-family="monospace" font-size="10">3. APPROVE</text>
+      </g>
+    </svg>
+
+
+
+    <!-- SVG 6: Nhà thầu phụ (Complex organizational network graph - interconnected data stream nodes) -->
+    <svg id="bg-art-subcontractors" class="blueprint-bg" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="rgba(0, 86, 255, 0.3)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Central BCH RICONS Asymmetric Triangle Hub -->
+        <polygon points="350,300 400,380 300,380" fill="none" stroke="#00FF66" stroke-width="2.5"/>
+        <circle cx="350" cy="350" r="12" fill="rgba(0, 86, 255, 0.2)" stroke="#0056FF" stroke-width="2"/>
+        
+        <!-- 5 Organic/Asymmetric Subcontractor Nodes -->
+        <circle cx="150" cy="200" r="8" fill="rgba(255, 255, 255, 0.6)" stroke="#E31837" stroke-width="2"/>
+        <circle cx="200" cy="500" r="8" fill="rgba(255, 255, 255, 0.6)" stroke="#E31837" stroke-width="2"/>
+        <circle cx="500" cy="250" r="8" fill="rgba(255, 255, 255, 0.6)" stroke="#E31837" stroke-width="2"/>
+        <circle cx="550" cy="480" r="8" fill="rgba(255, 255, 255, 0.6)" stroke="#E31837" stroke-width="2"/>
+        <circle cx="320" cy="120" r="8" fill="rgba(255, 255, 255, 0.6)" stroke="#E31837" stroke-width="2"/>
+        
+        <!-- Solid Radial Connections to BCH Hub -->
+        <path d="M350 350 L150 200" stroke="#0056FF" stroke-width="1.5"/>
+        <path d="M350 350 L200 500" stroke="#0056FF" stroke-width="1.5"/>
+        <path d="M350 350 L500 250" stroke="#0056FF" stroke-width="1.5"/>
+        <path d="M350 350 L550 480" stroke="#0056FF" stroke-width="1.5"/>
+        <path d="M350 350 L320 120" stroke="#0056FF" stroke-width="1.5"/>
+        
+        <!-- Asymmetric Dashed Constellation Links -->
+        <path d="M150 200 L200 500" stroke-dasharray="3 3"/>
+        <path d="M500 250 L550 480" stroke-dasharray="3 3"/>
+        <path d="M320 120 L150 200" stroke-dasharray="3 3"/>
+        <path d="M320 120 L500 250" stroke-dasharray="3 3"/>
+        
+        <!-- Sleek Background detailing -->
+        <circle cx="350" cy="350" r="160" stroke="rgba(0, 86, 255, 0.05)" stroke-width="1" stroke-dasharray="5 15" fill="none"/>
+        
+        <!-- Text Labels (Subcontractors & BCH Hub) -->
+        <text x="310" y="405" fill="rgba(0, 86, 255, 0.7)" font-family="monospace" font-weight="bold" font-size="11">BCH RICONS</text>
+        
+        <text x="80" y="225" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP ĐẤT PHAN</text>
+        <text x="135" y="525" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP ĐỈNH AN</text>
+        <text x="515" y="240" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP PHAN NGUYỄN</text>
+        <text x="565" y="505" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP HÀN VIỆT</text>
+        <text x="250" y="105" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP THUẬN THIÊN</text>
+      </g>
+    </svg>
+
+
+    </svg>
+
+    <!-- SVG 7: Sơ đồ tổ chức (Formal Hierarchical Network with elegant symmetry) -->
+    <svg id="bg-art-org-chart" class="blueprint-bg" viewBox="0 0 800 700" fill="none" xmlns="http://www.w3.org/2000/svg">
+      <g stroke="rgba(0, 86, 255, 0.25)" stroke-width="1" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Top Executive Node -->
+        <circle cx="400" cy="150" r="30" fill="rgba(227, 24, 55, 0.05)" stroke="rgba(227, 24, 55, 0.4)" stroke-width="2"/>
+        <circle cx="400" cy="150" r="40" fill="none" stroke="rgba(227, 24, 55, 0.2)" stroke-dasharray="4 4"/>
+        
+        <!-- Level 2 Nodes -->
+        <circle cx="250" cy="300" r="20" fill="none" stroke="rgba(0, 86, 255, 0.5)"/>
+        <circle cx="550" cy="300" r="20" fill="none" stroke="rgba(0, 86, 255, 0.5)"/>
+        
+        <!-- Level 3 Nodes -->
+        <circle cx="150" cy="450" r="15" fill="none"/>
+        <circle cx="350" cy="450" r="15" fill="none"/>
+        <circle cx="450" cy="450" r="15" fill="none"/>
+        <circle cx="650" cy="450" r="15" fill="none"/>
+        
+        <!-- Connecting Lines -->
+        <path d="M400 190 L400 240 M400 240 L250 240 L250 280 M400 240 L550 240 L550 280" stroke="rgba(227, 24, 55, 0.3)" stroke-width="1.5"/>
+        <path d="M250 320 L250 380 M250 380 L150 380 L150 435 M250 380 L350 380 L350 435" />
+        <path d="M550 320 L550 380 M550 380 L450 380 L450 435 M550 380 L650 380 L650 435" />
+        
+        <!-- Decorative grid/lines for formal look -->
+        <path d="M50 700 L50 50 L750 50 L750 700" stroke="rgba(0, 86, 255, 0.1)" stroke-dasharray="20 10"/>
+        <rect x="375" y="125" width="50" height="50" fill="none" transform="rotate(45 400 150)" stroke="rgba(227, 24, 55, 0.15)"/>
+      </g>
+    </svg>
+
+  </div>
+
+  <!-- ==================== LAYER 1: APP LAYOUT CONTAINER (SPLIT 2 SECTIONS) ==================== -->
+  <div class="app-layout" style="visibility:hidden;">
+    
+    <!-- Sidebar Environmental Column Background -->
+    <div class="sidebar-container">
+      
+      <!-- Brand Header with side-by-side matching glass plates -->
+      <div class="brand-header">
+        <div class="brand-logo-container" onclick="switchTab('org-chart', null, 'bg-art-org-chart')" style="cursor: pointer;" title="Xem sơ đồ tổ chức Ban chỉ huy">
+          <img src="Icon-Ricons.webp" alt="Ricons R Logo" class="brand-logo">
+        </div>
+        <!-- Cleaned inline style overrides so it relies 100% on the scaled design-system CSS -->
+        <div class="brand-text-container" onclick="switchTab('project-info', null, 'bg-art-schedule')" style="cursor: pointer;" title="Xem thông tin dự án">
+          <h1 class="title-1">MEP Workspace</h1>
+          <span class="label">ECO Long An Project</span>
+        </div>
+      </div>
+
+      <!-- Navigation module buttons as floating Glassmorphism plates -->
+      <ul class="sidebar-menu">
+        <li><a href="javascript:void(0)" class="menu-item active" onclick="switchTab('schedule', this, 'bg-art-schedule')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect><line x1="16" y1="2" x2="16" y2="6"></line><line x1="8" y1="2" x2="8" y2="6"></line><line x1="3" y1="10" x2="21" y2="10"></line></svg>
+          Tiến độ thi công
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('boq', this, 'bg-art-boq');">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><line x1="18" y1="20" x2="18" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="6" y1="20" x2="6" y2="14"></line></svg>
+          Khối lượng thi công
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('materials', this, 'bg-art-materials')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path><polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline><line x1="12" y1="22.08" x2="12" y2="12"></line></svg>
+          Vật tư & Thiết bị
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('purchasing', this, 'bg-art-materials')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Đơn đặt hàng (PO)
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('submittals', this, 'bg-art-submittals')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          Hồ sơ trình duyệt
+        </a></li>
+
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('subcontractors', this, 'bg-art-subcontractors')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M23 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          Nhà thầu phụ
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('users', this, 'bg-art-subcontractors')" data-perm="users:view">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"></path><circle cx="9" cy="7" r="4"></circle><path d="M22 21v-2a4 4 0 0 0-3-3.87"></path><path d="M16 3.13a4 4 0 0 1 0 7.75"></path></svg>
+          Quản lý User
+        </a></li>
+      </ul>
+      
+      <!-- User Profile & Logout at Bottom -->
+      <div class="user-profile-panel">
+        <div class="profile-header-row" onclick="ECO_Auth.editProfile()" style="cursor: pointer;" title="Nhấp để chỉnh sửa thông tin cá nhân">
+          <div class="user-avatar-container">
+            <div class="avatar-ring-outer"></div>
+            <div class="user-avatar" id="eco-profile-avatar-container" style="position: relative;">
+              <span id="eco-profile-initials">NH</span>
+              <div class="avatar-status-dot"></div>
+            </div>
+          </div>
+          <div class="user-info">
+            <span class="user-name" id="eco-profile-name" title="Nguyễn Văn Hùng">Nguyễn Văn Hùng</span>
+            <span class="user-role-text" id="eco-profile-role">MEP Lead</span>
+          </div>
+        </div>
+        
+        <button class="profile-logout-btn" onclick="ECO_Session.signOut()" title="Đăng xuất">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 6px;"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path><polyline points="16 17 21 12 16 7"></polyline><line x1="21" y1="12" x2="9" y2="12"></line></svg>
+          ĐĂNG XUẤT
+        </button>
+      </div>
+      
+      <div style="text-align:center; padding:10px 10px 4px; font-size:0.65rem; color:var(--text-secondary); opacity: 0.45; border-top:1px solid rgba(0,0,0,0.06); letter-spacing: 0.02em; margin-top: 4px;">
+        Copyright &copy; Ks. Quốc Bảo (0932705063)
+      </div>
+      
+    </div>
+
+    <!-- Module Content Area -->
+    <main class="main-content">
+      
+      <!-- ==================== TIẾN ĐỘ THI CÔNG TAB ==================== -->
+      <div id="schedule" class="tab-content active">
+        <!-- Module Header sitting directly on background -->
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="calendar"></i><h2>Tiến độ thi công</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-schedule">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" data-tab="schedule-main"><i data-lucide="calendar-days" style="width:16px;height:16px;"></i> Tổng quan tiến độ</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('schedule')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+
+        <!-- Separate Dashboard Grid Panels -->
+        <div class="dashboard-grid" style="margin-bottom: 24px;"></div>
+
+        <!-- Separate Detailed Table Panel -->
+        <div class="glass-panel content-table-panel"></div>
+      </div>
+
+      <!-- ==================== KHỐI LƯỢNG THI CÔNG (BOQ) TAB ==================== -->
+      <div id="boq" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="bar-chart-3"></i><h2>Khối lượng thi công</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-boq">
+            <div class="coverflow-track" id="boq-coverflow-track">
+              <!-- BOQ system tabs will be injected by eco-boq.js -->
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('boq')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+        <div id="boq-dynamic-content">
+          <div style="text-align:center;padding:60px 0;color:var(--text-tertiary);">Đang tải module BOQ...</div>
+        </div>
+      </div>
+
+      <!-- ==================== VẬT TƯ & THIẾT BỊ TAB ==================== -->
+      <div id="materials" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="package"></i><h2>Vật tư & Thiết bị</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-materials">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" data-material-section="overview" onclick="switchMaterialsSection('overview'); if(window.OverviewModule)OverviewModule.render()"><i data-lucide="package" style="width:16px;height:16px;"></i> Tổng quan vật tư</div>
+              <div class="coverflow-item" data-material-section="kho" data-kho-tab="stock" onclick="switchMaterialsSection('kho'); KhoModule.setTab('stock')"><i data-lucide="warehouse" style="width:16px;height:16px;"></i> Tồn kho hiện tại</div>
+              <div class="coverflow-item" data-material-section="kho" data-kho-tab="history" onclick="switchMaterialsSection('kho'); KhoModule.setTab('history')"><i data-lucide="history" style="width:16px;height:16px;"></i> Lịch sử nhập / xuất</div>
+              <div class="coverflow-item" data-material-section="catalog" onclick="switchMaterialsSection('catalog'); MatModule.render()"><i data-lucide="ruler" style="width:16px;height:16px;"></i> Khối lượng định mức</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('materials')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+
+        <div id="materials-overview" class="materials-section" style="display:block;">
+          <div id="mat-overview-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải tổng quan vật tư...</div>
+          </div>
+        </div>
+
+        <div id="materials-kho" class="materials-section" style="display:none;">
+          <div id="kho-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải module kho...</div>
+          </div>
+        </div>
+
+        <div id="materials-catalog" class="materials-section" style="display:none;">
+          <div id="mat-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải danh mục vật tư...</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== ĐƠN ĐẶT HÀNG (PO) TAB ==================== -->
+      <div id="purchasing" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="file-text"></i><h2>Đơn đặt hàng (PO)</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-purchasing">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" data-purchasing-section="po" data-po-tab="list" onclick="switchPurchasingSection('po'); POModule.setTab('list')"><i data-lucide="file-text" style="width:16px;height:16px;"></i> Danh sách PO</div>
+              <div class="coverflow-item" data-purchasing-section="po" data-po-tab="suppliers" onclick="switchPurchasingSection('po'); POModule.setTab('suppliers')"><i data-lucide="building-2" style="width:16px;height:16px;"></i> Nhà cung cấp</div>
+              <div class="coverflow-item" data-purchasing-section="danh-muc-vat-tu" onclick="switchPurchasingSection('danh-muc-vat-tu'); DanhMucVatTuModule.render()"><i data-lucide="clipboard-list" style="width:16px;height:16px;"></i> Khai báo Vật tư</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('po')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+
+        <div id="purchasing-po" class="purchasing-section" style="display:block;">
+          <div id="po-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải module PO...</div>
+          </div>
+        </div>
+
+        <div id="purchasing-danh-muc-vat-tu" class="purchasing-section" style="display:none;">
+          <div id="danh-muc-vat-tu-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải danh mục vật tư...</div>
+          </div>
+        </div>
+      </div>
+      <!-- ==================== HỒ SƠ TRÌNH DUYỆT TAB ==================== -->
+      <div id="submittals" class="tab-content">
+        <!-- Module Header sitting directly on background -->
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="file-text"></i><h2>Hồ sơ trình duyệt</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-submittals">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" data-sub-tab="shopdrawing" onclick="switchSubTab('shopdrawing', this)"><i data-lucide="drafting-compass" style="width:16px;height:16px;"></i> Shopdrawing</div>
+              <div class="coverflow-item" data-sub-tab="mos" onclick="switchSubTab('mos', this)"><i data-lucide="hard-hat" style="width:16px;height:16px;"></i> Biện pháp thi công (MOS)</div>
+              <div class="coverflow-item" data-sub-tab="mas" onclick="switchSubTab('mas', this)"><i data-lucide="clipboard-check" style="width:16px;height:16px;"></i> Trình duyệt vật liệu (MAS)</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('submittals')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+
+        <!-- Sub-tab Content: Shopdrawing -->
+        <div id="sub-shopdrawing" class="submittal-content active glass-panel content-table-panel" style="display: block; animation: fadeIn 0.4s ease-out;">
+          <div class="submittals-toolbar" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <span class="label" style="margin:0;">Bản vẽ Shopdrawing</span>
+            <span id="submittals-count-shopdrawing" class="badge badge-info" style="font-size:0.72rem;">—</span>
+            <div style="flex:1 1 auto;"></div>
+            <button class="btn btn-primary" onclick="window.SubmittalsModule&&SubmittalsModule.openForm('shopdrawing',null)" style="font-size:0.82rem;padding:7px 14px;white-space:nowrap;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Thêm hồ sơ</button>
+            <input type="text" placeholder="Tìm mã / tên hồ sơ..." oninput="window.SubmittalsModule&&SubmittalsModule.setFilter('shopdrawing','q',this.value)" style="padding:7px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:0.82rem;font-family:inherit;min-width:200px;">
+            <select class="eco-select" onchange="window.SubmittalsModule&&SubmittalsModule.setFilter('shopdrawing','status',this.value)" style="font-size:0.82rem;padding:7px 10px;">
+              <option value="">Tất cả</option>
+              <option value="a">A — Approved</option>
+              <option value="b">B — With comments</option>
+              <option value="c">C — Reject</option>
+              <option value="none">Chưa có</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table class="tech-table">
+              <thead>
+                <tr>
+                  <th rowspan="2" style="vertical-align: middle;">STT</th>
+                  <th rowspan="2" style="vertical-align: middle;">Hạng mục</th>
+                  <th rowspan="2" style="vertical-align: middle;">Mã hồ sơ</th>
+                  <th rowspan="2" style="vertical-align: middle;">Phạm vi</th>
+                  <th rowspan="2" style="vertical-align: middle;">Tên hồ sơ</th>
+                  <th rowspan="2" style="vertical-align: middle;">Rev</th>
+                  <th rowspan="2" style="vertical-align: middle;">KH trình</th>
+                  <th colspan="3" class="tvgs-header tvgs-group-end" style="text-align:center;">TVGS</th>
+                  <th colspan="3" class="cdt-header cdt-group-end" style="text-align:center;">Chủ đầu tư/ Ban QLDA</th>
+                  <th rowspan="2" style="vertical-align: middle;">Phụ trách</th>
+                  <th rowspan="2" style="vertical-align: middle;">File thực hiện</th>
+                  <th rowspan="2" style="vertical-align: middle;">File duyệt</th>
+                </tr>
+                <tr>
+                  <th class="tvgs-sub-header">Ngày trình</th>
+                  <th class="tvgs-sub-header">Ngày duyệt</th>
+                  <th class="tvgs-sub-header tvgs-group-end">Duyệt</th>
+                  <th class="cdt-sub-header">Ngày trình</th>
+                  <th class="cdt-sub-header">Ngày duyệt</th>
+                  <th class="cdt-sub-header cdt-group-end">Duyệt</th>
+                </tr>
+              </thead>
+              <tbody id="submittals-tbody-shopdrawing"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sub-tab Content: MOS -->
+        <div id="sub-mos" class="submittal-content glass-panel content-table-panel" style="display: none; animation: fadeIn 0.4s ease-out;">
+          <div class="submittals-toolbar" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <span class="label" style="margin:0;">Biện pháp thi công (MOS)</span>
+            <span id="submittals-count-mos" class="badge badge-info" style="font-size:0.72rem;">—</span>
+            <div style="flex:1 1 auto;"></div>
+            <button class="btn btn-primary" onclick="window.SubmittalsModule&&SubmittalsModule.openForm('mos',null)" style="font-size:0.82rem;padding:7px 14px;white-space:nowrap;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Thêm hồ sơ</button>
+            <input type="text" placeholder="Tìm mã / nội dung..." oninput="window.SubmittalsModule&&SubmittalsModule.setFilter('mos','q',this.value)" style="padding:7px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:0.82rem;font-family:inherit;min-width:200px;">
+            <select class="eco-select" onchange="window.SubmittalsModule&&SubmittalsModule.setFilter('mos','status',this.value)" style="font-size:0.82rem;padding:7px 10px;">
+              <option value="">Tất cả</option>
+              <option value="a">A — Approved</option>
+              <option value="b">B — With comments</option>
+              <option value="c">C — Reject</option>
+              <option value="none">Chưa có</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table class="tech-table">
+              <thead>
+                <tr>
+                  <th>STT</th>
+                  <th>Mã hồ sơ</th>
+                  <th>Phân khu</th>
+                  <th>Nội dung biện pháp thi công</th>
+                  <th>Rev</th>
+                  <th>Duyệt</th>
+                  <th>KH trình</th>
+                  <th>Ngày trình TVGS</th>
+                  <th>Ngày duyệt</th>
+                  <th>Cấp duyệt</th>
+                  <th>Phụ trách</th>
+                  <th>File thực hiện</th>
+                  <th>File duyệt</th>
+                </tr>
+              </thead>
+              <tbody id="submittals-tbody-mos"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Sub-tab Content: MAS -->
+        <div id="sub-mas" class="submittal-content glass-panel content-table-panel" style="display: none; animation: fadeIn 0.4s ease-out;">
+          <div class="submittals-toolbar" style="display:flex;gap:12px;align-items:center;margin-bottom:16px;flex-wrap:wrap;">
+            <span class="label" style="margin:0;">Trình duyệt vật liệu (MAS)</span>
+            <span id="submittals-count-mas" class="badge badge-info" style="font-size:0.72rem;">—</span>
+            <div style="flex:1 1 auto;"></div>
+            <button class="btn btn-primary" onclick="window.SubmittalsModule&&SubmittalsModule.openForm('mas',null)" style="font-size:0.82rem;padding:7px 14px;white-space:nowrap;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Thêm hồ sơ</button>
+            <input type="text" placeholder="Tìm mã / vật tư / nhãn hiệu..." oninput="window.SubmittalsModule&&SubmittalsModule.setFilter('mas','q',this.value)" style="padding:7px 12px;border:1px solid rgba(0,0,0,0.12);border-radius:8px;font-size:0.82rem;font-family:inherit;min-width:200px;">
+            <select class="eco-select" onchange="window.SubmittalsModule&&SubmittalsModule.setFilter('mas','status',this.value)" style="font-size:0.82rem;padding:7px 10px;">
+              <option value="">Tất cả</option>
+              <option value="a">A — Approved</option>
+              <option value="b">B — With comments</option>
+              <option value="c">C — Reject</option>
+              <option value="none">Chưa có</option>
+            </select>
+          </div>
+          <div class="table-container">
+            <table class="tech-table">
+              <thead>
+                <tr>
+                  <th rowspan="2" style="vertical-align: middle;">STT</th>
+                  <th rowspan="2" style="vertical-align: middle;">Mã hồ sơ</th>
+                  <th rowspan="2" style="vertical-align: middle;">Hạng mục vật tư</th>
+                  <th rowspan="2" style="vertical-align: middle;">Nhãn hiệu</th>
+                  <th rowspan="2" style="vertical-align: middle;">Nhà cung cấp</th>
+                  <th rowspan="2" style="vertical-align: middle;">Xuất xứ</th>
+                  <th rowspan="2" style="vertical-align: middle;">KH trình</th>
+                  <th colspan="3" class="tvgs-header tvgs-group-end" style="text-align:center;">TVGS</th>
+                  <th colspan="3" class="cdt-header cdt-group-end" style="text-align:center;">Chủ đầu tư/ Ban QLDA</th>
+                  <th rowspan="2" style="vertical-align: middle;">File thực hiện</th>
+                  <th rowspan="2" style="vertical-align: middle;">File duyệt</th>
+                </tr>
+                <tr>
+                  <th class="tvgs-sub-header">Ngày trình</th>
+                  <th class="tvgs-sub-header">Ngày duyệt</th>
+                  <th class="tvgs-sub-header tvgs-group-end">Duyệt</th>
+                  <th class="cdt-sub-header">Ngày trình</th>
+                  <th class="cdt-sub-header">Ngày duyệt</th>
+                  <th class="cdt-sub-header cdt-group-end">Duyệt</th>
+                </tr>
+              </thead>
+              <tbody id="submittals-tbody-mas"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+
+
+      <!-- ==================== NHÀ THẦU PHỤ TAB ==================== -->
+      <div id="subcontractors" class="tab-content">
+        <!-- Module Header sitting directly on background -->
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="users"></i><h2>Nhà thầu phụ</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-subcontractors">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" data-tab="subcontractors-main"><i data-lucide="users" style="width:16px;height:16px;"></i> Danh sách thầu phụ</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('subcontractors')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+        
+        <!-- Subcontractors Cards Grid — render động từ subcontractorsData (nguồn dữ liệu duy nhất) -->
+        <div class="subcontractors-grid" id="subcontractors-grid"></div>
+      </div>
+
+      <!-- ==================== QUẢN LÝ USER TAB ==================== -->
+      <div id="users" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="user-cog"></i><h2>Quản lý người dùng</h2></div>
+        </div>
+        <div id="users-content" style="margin-top:20px;"></div>
+      </div>
+
+      <!-- ==================== SUBCONTRACTOR DETAIL TAB ==================== -->
+      <div id="subcontractor-detail" class="tab-content">
+        <div class="subcontractor-detail-container">
+          <!-- Streamlined Detail Header -->
+          <div class="subcontractor-detail-header streamlined-header" style="margin-bottom: 24px;">
+            <div class="header-main-row">
+              <h2 id="detail-title" class="title-1"></h2>
+              <div class="detail-personnel-stats">
+                 <div class="detail-stat worker-stat"><i data-lucide="users"></i> <span id="detail-workers"></span> Công nhân</div>
+                 <div class="detail-stat engineer-stat"><i data-lucide="user-check"></i> <span id="detail-engineers"></span> CB Kỹ thuật</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="subcontractor-detail-grid">
+            <!-- Organizational Chart Section -->
+            <div class="glass-panel subcontractor-section">
+              <h3 class="section-title">Sơ Đồ Tổ Chức</h3>
+              <div id="detail-org-chart" class="org-chart">
+                <!-- Dynamically filled -->
+              </div>
+            </div>
+
+            <!-- Employee List Section -->
+            <div class="glass-panel subcontractor-section">
+              <h3 class="section-title">Danh Sách Công Nhân</h3>
+              <div id="detail-employee-list" class="employee-list">
+                <!-- Dynamically filled -->
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== THÔNG TIN DỰ ÁN MODULE ==================== -->
+      <div id="project-info" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="info"></i><h2>Thông tin dự án</h2></div>
+        </div>
+        <div class="glass-panel" style="padding: 32px 40px; margin-bottom: 24px;">
+          <div style="display: flex; flex-direction: column; gap: 24px;">
+            <div style="display: flex; gap: 24px; align-items: flex-start;">
+              <div style="font-weight: 800; color: var(--text-secondary); width: 120px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.05em; padding-top: 2px;">Dự án:</div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.5; flex: 1;">KHU ĐÔ THỊ SINH THÁI, THƯƠNG MẠI DU LỊCH XÃ BẾN LỨC, TỈNH TÂY NINH</div>
+            </div>
+            <div style="height: 1px; background: rgba(0, 86, 255, 0.1);"></div>
+            <div style="display: flex; gap: 24px; align-items: flex-start;">
+              <div style="font-weight: 800; color: var(--text-secondary); width: 120px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.05em; padding-top: 2px;">Công trình:</div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.5; flex: 1;">KHU CĂN HỘ CAO TẦNG KẾT HỢP BÃI ĐỖ XE NGẦM – PHÂN KHU 6.1 VÀ 6.2</div>
+            </div>
+            <div style="height: 1px; background: rgba(0, 86, 255, 0.1);"></div>
+            <div style="display: flex; gap: 24px; align-items: flex-start;">
+              <div style="font-weight: 800; color: var(--text-secondary); width: 120px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.05em; padding-top: 2px;">Gói thầu:</div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.5; flex: 1;">TỔNG THẦU THIẾT KẾ, THI CÔNG</div>
+            </div>
+            <div style="height: 1px; background: rgba(0, 86, 255, 0.1);"></div>
+            <div style="display: flex; gap: 24px; align-items: flex-start;">
+              <div style="font-weight: 800; color: var(--text-secondary); width: 120px; text-transform: uppercase; font-size: 0.9rem; letter-spacing: 0.05em; padding-top: 2px;">Địa điểm:</div>
+              <div style="font-weight: 700; color: var(--text-primary); font-size: 1.05rem; line-height: 1.5; flex: 1;">LÔ ĐẤT 6-HH1 VÀ 6-P1 THUỘC PHÂN KHU 6.1 VÀ 6.2, KHU ĐÔ THỊ SINH THÁI THƯƠNG MẠI VÀ DU LỊCH XÃ BẾN LỨC, TỈNH TÂY NINH</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ==================== ORG CHART MODULE ==================== -->
+      <div id="org-chart" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="network"></i><h2>Sơ đồ tổ chức Ban chỉ huy</h2></div>
+        </div>
+        <div id="bch-content-container"></div>
+      </div>
+
+      <!-- Footer Section -->
+      <footer class="workspace-footer">
+        <div class="footer-divider"></div>
+        <div class="footer-content">
+          <div class="footer-slogan">One team - Great solution</div>
+        </div>
+      </footer>
+
+    </main>
+  </div>
+
+  <!-- ECO Modal Overlay -->
+  <div id="eco-modal-overlay" class="eco-modal-overlay">
+    <div id="eco-modal-box" class="eco-modal-box eco-modal-md">
+      <div class="eco-modal-header">
+        <h3 id="eco-modal-title" class="eco-modal-title"></h3>
+        <button onclick="ECO_UI.closeModal()" class="eco-modal-close-btn">&times;</button>
+      </div>
+      <div id="eco-modal-body" class="eco-modal-body"></div>
+      <div id="eco-modal-footer" class="eco-modal-footer"></div>
+    </div>
+  </div>
+
+  <!-- ECO Toast Container -->
+  <div id="eco-toast-container" style="position:fixed; bottom:24px; right:24px; z-index:9999; display:flex; flex-direction:column; gap:10px;"></div>
+
+  <!-- Dynamic Tab Switch & Background Art Crossfade Script -->
+  <script>
+    let contentTableResizeFrame = null;
+
+    function updateContentTableHeights() {
+      if (contentTableResizeFrame) cancelAnimationFrame(contentTableResizeFrame);
+      contentTableResizeFrame = requestAnimationFrame(() => {
+        const footer = document.querySelector('.workspace-footer');
+        const main = document.querySelector('.main-content');
+        if (!footer || !main) return;
+
+        const footerRect = footer.getBoundingClientRect();
+        const rootStyle = getComputedStyle(document.documentElement);
+        const appScale = parseFloat(rootStyle.getPropertyValue('--app-scale')) || 1;
+        const footerTop = (footerRect.top / appScale) - 8;
+        const scrollAreas = document.querySelectorAll(
+          '.tab-content.active .content-table-panel > .table-container, ' +
+          '.tab-content.active .content-table-scroll, ' +
+          '.tab-content.active .eco-boq-table-scroll'
+        );
+
+        scrollAreas.forEach(area => {
+          area.style.height = '';
+          area.style.maxHeight = '';
+          const areaTop = area.getBoundingClientRect().top / appScale;
+          let trailingHeight = 0;
+          let sibling = area.nextElementSibling;
+          while (sibling) {
+            trailingHeight += sibling.getBoundingClientRect().height / appScale;
+            sibling = sibling.nextElementSibling;
+          }
+          const available = Math.floor(footerTop - areaTop - trailingHeight - 4);
+          if (available > 240) {
+            area.style.height = available + 'px';
+            area.style.maxHeight = available + 'px';
+          }
+        });
+      });
+    }
+
+    function renderActiveModule(tabId) {
+      if (tabId === 'users' && typeof UserModule !== 'undefined') UserModule.render();
+      if (tabId === 'boq' && typeof ECOBOQModule !== 'undefined') ECOBOQModule.render();
+      if (tabId === 'org-chart' && typeof BCHModule !== 'undefined') BCHModule.render();
+      if (tabId === 'schedule' && typeof TienDoModule !== 'undefined') TienDoModule.render();
+      if (tabId === 'materials') {
+        const activeItem = document.querySelector('#coverflow-materials .coverflow-item.active');
+        if (activeItem && activeItem.dataset.materialSection === 'kho') {
+          switchMaterialsSection('kho');
+          if (typeof KhoModule !== 'undefined') KhoModule.render();
+        } else if (activeItem && activeItem.dataset.materialSection === 'catalog') {
+          switchMaterialsSection('catalog');
+          if (typeof MatModule !== 'undefined') MatModule.render();
+        } else {
+          switchMaterialsSection('overview');
+          if (typeof OverviewModule !== 'undefined') OverviewModule.render();
+        }
+      }
+      if (tabId === 'purchasing') {
+        const activeItem = document.querySelector('#coverflow-purchasing .coverflow-item.active');
+        if (activeItem && activeItem.dataset.purchasingSection === 'danh-muc-vat-tu') {
+          switchPurchasingSection('danh-muc-vat-tu');
+          if (typeof DanhMucVatTuModule !== 'undefined') DanhMucVatTuModule.render();
+        } else {
+          switchPurchasingSection('po');
+          if (typeof POModule !== 'undefined') POModule.render();
+        }
+      }
+      setTimeout(updateContentTableHeights, 0);
+    }
+
+    function switchMaterialsSection(section) {
+      document.querySelectorAll('.materials-section').forEach(panel => {
+        panel.style.display = 'none';
+      });
+      const target = document.getElementById('materials-' + section);
+      if (target) target.style.display = 'block';
+
+      if (section === 'overview' || section === 'catalog') {
+        document.querySelectorAll('#coverflow-materials .coverflow-item').forEach(item => {
+          item.classList.toggle('active', item.dataset.materialSection === section);
+        });
+        const container = document.getElementById('coverflow-materials');
+        if (container && window.updateCoverFlowLayout) window.updateCoverFlowLayout(container);
+      }
+      setTimeout(updateContentTableHeights, 0);
+    }
+
+    function switchPurchasingSection(section) {
+      document.querySelectorAll('.purchasing-section').forEach(panel => {
+        panel.style.display = 'none';
+      });
+      const target = document.getElementById('purchasing-' + section);
+      if (target) target.style.display = 'block';
+
+      if (section === 'danh-muc-vat-tu') {
+        document.querySelectorAll('#coverflow-purchasing .coverflow-item').forEach(item => {
+          item.classList.toggle('active', item.dataset.purchasingSection === section);
+        });
+        const container = document.getElementById('coverflow-purchasing');
+        if (container && window.updateCoverFlowLayout) window.updateCoverFlowLayout(container);
+      }
+      setTimeout(updateContentTableHeights, 0);
+    }
+
+    function switchTab(tabId, element, bgArtId) {
+      // 1. Switch Tab Content Visually
+      const targetTab = document.getElementById(tabId);
+      if (!targetTab) {
+        console.warn('[switchTab] Không tìm thấy tab:', tabId);
+        return;
+      }
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => {
+        tab.classList.remove('active');
+      });
+      targetTab.classList.add('active');
+      
+      // 2. Switch Sidebar Menu Item Highlight
+      const menuItems = document.querySelectorAll('.menu-item');
+      menuItems.forEach(item => {
+        item.classList.remove('active');
+      });
+      if (element) element.classList.add('active');
+      
+      // 3. Trigger Smooth Dynamic SVG Crossfade Transition (Layer 0)
+      const blueprintBgs = document.querySelectorAll('.blueprint-bg');
+      blueprintBgs.forEach(bg => {
+        bg.classList.remove('active');
+      });
+      if (bgArtId) {
+        const bgElement = document.getElementById(bgArtId);
+        if (bgElement) bgElement.classList.add('active');
+      }
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+      renderActiveModule(tabId);
+      // Re-init coverflow layout for newly visible modules
+      setTimeout(() => {
+        if (window.initCoverFlows) window.initCoverFlows();
+        updateContentTableHeights();
+      }, 50);
+    }
+
+    function switchSubTab(tabId, element) {
+      // Hide all sub-tabs
+      const contents = document.querySelectorAll('.submittal-content');
+      contents.forEach(c => c.style.display = 'none');
+      
+      // Show selected sub-tab
+      const targetContent = document.getElementById('sub-' + tabId);
+      if (targetContent) targetContent.style.display = 'block';
+
+      // Update coverflow active state
+      const coverflowContainer = document.getElementById('coverflow-submittals');
+      if (coverflowContainer) {
+        coverflowContainer.querySelectorAll('.coverflow-item').forEach(item => {
+          item.classList.toggle('active', item.dataset.subTab === tabId);
+        });
+        if (window.updateCoverFlowLayout) {
+          window.updateCoverFlowLayout(coverflowContainer);
+        }
+      }
+      setTimeout(updateContentTableHeights, 0);
+    }
+
+    function backToSubcontractorList() {
+      const subcontractorMenu = document.querySelector('.menu-item[onclick*="subcontractors"]');
+      switchTab('subcontractors', subcontractorMenu, 'bg-art-subcontractors');
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const backButton = document.querySelector('.btn-back');
+      if (backButton) backButton.onclick = backToSubcontractorList;
+      const activeTab = document.querySelector('.tab-content.active');
+      if (activeTab) renderActiveModule(activeTab.id);
+      lucide.createIcons();
+      updateContentTableHeights();
+      window.addEventListener('resize', updateContentTableHeights);
+
+      // Tự động re-render module khi cache hoặc realtime database thay đổi số liệu
+      if (typeof ECO_Cache !== 'undefined') {
+        ECO_Cache.on('*', () => {
+          const tab = document.querySelector('.tab-content.active');
+          if (tab) renderActiveModule(tab.id);
+        });
+      }
+    });
+
+    function switchToSubcontractorDetail(scId, cardElement, bgArtId) {
+      const data = subcontractorsData[scId];
+      if (!data) return;
+
+      // Update detail header
+      document.getElementById('detail-title').textContent = data.name;
+      document.getElementById('detail-workers').textContent = data.workers;
+      document.getElementById('detail-engineers').textContent = data.engineers;
+
+      // Helper to build relational tree
+      function buildLeadershipTree(list) {
+        const map = {};
+        const roots = [];
+        
+        list.forEach(item => {
+          map[item.id] = { ...item, children: [] };
+        });
+        
+        list.forEach(item => {
+          const mapped = map[item.id];
+          if (item.parentId && map[item.parentId]) {
+            map[item.parentId].children.push(mapped);
+          } else {
+            roots.push(mapped);
+          }
+        });
+        
+        return roots;
+      }
+
+      const subconColor = SUBCON_COLORS[scId] || 'blue';
+
+      // Helper to render tree nodes recursively
+      function renderTreeHtml(node, color) {
+        let childrenHtml = '';
+        if (node.children && node.children.length > 0) {
+          childrenHtml = `
+            <ul>
+              ${node.children.map(child => renderTreeHtml(child, color)).join('')}
+            </ul>
+          `;
+        }
+        
+        return `
+          <li>
+            <div class="org-node accent-card accent-${color}" style="padding: 12px 16px; min-width: 170px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px;">
+              <div style="font-size: 0.65rem; font-weight: 800; color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 2px;">${escapeHTML(node.role)}</div>
+              <div style="font-size: 0.95rem; font-weight: 800; color: var(--text-inverse); text-shadow: 0 2px 10px rgba(0,0,0,0.3); transition: var(--transition-smooth);" class="card-title">${escapeHTML(node.name)}</div>
+              <div style="display: flex; align-items: center; gap: 6px; font-size: 0.72rem; color: rgba(255,255,255,0.95);">
+                <span>${escapeHTML(node.responsibility)}</span>
+              </div>
+            </div>
+            ${childrenHtml}
+          </li>
+        `;
+      }
+
+      // Build organizational chart
+      const orgChart = document.getElementById('detail-org-chart');
+      if (data.leadership && data.leadership.length > 0) {
+        const roots = buildLeadershipTree(data.leadership);
+        if (roots.length > 0) {
+          orgChart.innerHTML = `
+            <ul class="org-tree">
+              ${roots.map(root => renderTreeHtml(root, subconColor)).join('')}
+            </ul>
+          `;
+        } else {
+          orgChart.innerHTML = `<div style="color: rgba(255,255,255,0.5); text-align: center; width: 100%;">Lỗi cấu trúc sơ đồ tổ chức.</div>`;
+        }
+      } else {
+        orgChart.innerHTML = `<div style="color: rgba(255,255,255,0.5); text-align: center; width: 100%;">Chưa có dữ liệu sơ đồ tổ chức.</div>`;
+      }
+
+      // Build employee list table
+      const employeeList = document.getElementById('detail-employee-list');
+      if (data.employees && data.employees.length > 0) {
+        employeeList.innerHTML = `
+          <div class="worker-table-container">
+            <table class="worker-table">
+              <colgroup>
+                <col style="width: 28%;">
+                <col style="width: 22%;">
+                <col style="width: 28%;">
+                <col style="width: 22%;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th title="Họ và tên" aria-label="Họ và tên">
+                    <div class="header-icon-wrapper">
+                      <!-- Dual user icon: outer blue circle, inner red person -->
+                      <svg class="ricons-dual-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="var(--ricons-blue-bright)" stroke-width="2" fill="none" />
+                        <path d="M12 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm0 2c-2.67 0-8 1.34-8 4v1h16v-1c0-2.66-5.33-4-8-4z" fill="var(--ricons-red)" />
+                      </svg>
+                    </div>
+                  </th>
+                  <th title="Công việc" aria-label="Công việc">
+                    <div class="header-icon-wrapper">
+                      <!-- Dual briefcase icon: outer blue bag, inner red lock/details -->
+                      <svg class="ricons-dual-icon" viewBox="0 0 24 24">
+                        <rect x="3" y="6" width="18" height="14" rx="2" stroke="var(--ricons-blue-bright)" stroke-width="2" fill="none" />
+                        <path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2" stroke="var(--ricons-blue-bright)" stroke-width="2" fill="none" />
+                        <path d="M12 10v6M10 13h4" stroke="var(--ricons-red)" stroke-width="2.5" stroke-linecap="round" />
+                      </svg>
+                    </div>
+                  </th>
+                  <th title="Vị trí làm việc" aria-label="Vị trí làm việc">
+                    <div class="header-icon-wrapper">
+                      <!-- Dual map pin: outer blue pin, inner red dot -->
+                      <svg class="ricons-dual-icon" viewBox="0 0 24 24">
+                        <path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7z" stroke="var(--ricons-blue-bright)" stroke-width="2" fill="none" />
+                        <circle cx="12" cy="9" r="3.5" fill="var(--ricons-red)" />
+                      </svg>
+                    </div>
+                  </th>
+                  <th title="Số điện thoại" aria-label="Số điện thoại">
+                    <div class="header-icon-wrapper">
+                      <!-- Dual phone: outer blue circle, inner red receiver -->
+                      <svg class="ricons-dual-icon" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="10" stroke="var(--ricons-blue-bright)" stroke-width="2" fill="none" />
+                        <path d="M15.5 12.3a2.5 2.5 0 0 0-1.8-.8c-.3 0-.6.1-.9.3l-.8.8c-.2.2-.5.2-.8 0a6 6 0 0 1-1.7-1.7c-.2-.3-.2-.6 0-.8l.8-.8c.2-.3.3-.6.3-.9 0-.7-.4-1.4-.8-1.8-.4-.4-1-.5-1.5-.2l-.6.5c-.7.6-1 1.5-.7 2.4.6 2.3 2.4 4.1 4.7 4.7.9.3 1.8 0 2.4-.7l.5-.6c.3-.5.2-1.1-.2-1.5z" fill="var(--ricons-red)" />
+                      </svg>
+                    </div>
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.employees.map(emp => `
+                  <tr>
+                    <td>
+                      <div class="worker-name" title="${escapeHTML(emp.name)}">
+                        <span>${escapeHTML(emp.name)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="worker-job">
+                        <span class="worker-badge job-badge" title="${escapeHTML(emp.position)}">${escapeHTML(emp.position)}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="worker-location" title="${escapeHTML(emp.location || 'Chưa phân công')}">
+                        <span>${escapeHTML(emp.location || 'Chưa phân công')}</span>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="worker-phone" title="${escapeHTML(emp.phone || 'N/A')}">
+                        <span>${escapeHTML(emp.phone || 'N/A')}</span>
+                      </div>
+                    </td>
+                  </tr>
+                `).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
+      } else {
+        employeeList.innerHTML = `<div style="color: rgba(255,255,255,0.5); text-align: center;">Chưa có dữ liệu công nhân.</div>`;
+      }
+
+      // Switch to detail tab
+      const tabs = document.querySelectorAll('.tab-content');
+      tabs.forEach(tab => tab.classList.remove('active'));
+      document.getElementById('subcontractor-detail').classList.add('active');
+      
+      // Update menu highlight
+      const menuItems = document.querySelectorAll('.menu-item');
+      menuItems.forEach(item => item.classList.remove('active'));
+      const subcontractorMenu = document.querySelector('.menu-item[onclick*="subcontractors"]');
+      if (subcontractorMenu) subcontractorMenu.classList.add('active');
+      
+      // Update background art
+      const blueprintBgs = document.querySelectorAll('.blueprint-bg');
+      blueprintBgs.forEach(bg => bg.classList.remove('active'));
+      document.getElementById(bgArtId).classList.add('active');
+      
+      // Instantiate icons dynamically in newly added HTML nodes
+      lucide.createIcons();
+      
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function getInitials(fullName) {
+      return fullName
+        .split(' ')
+        .filter(Boolean)
+        .slice(-2)
+        .map(part => part.charAt(0))
+        .join('')
+        .toUpperCase();
+    }
+
+    function escapeHTML(value) {
+      return String(value)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    /* ==================== SUBCONTRACTORS DATA ==================== */
+    const subcontractorsData = {
+      'dat-phan': {
+        name: 'ĐẤT PHAN',
+        scope: 'Hệ thống Điện & Điện nhẹ - Tháp S1, Hầm B1, B2',
+        system: 'Điện & Điện nhẹ',
+        contact: 'Nguyễn Văn A',
+        phone: '0901.234.567',
+        workers: 45,
+        engineers: 3,
+        rating: 'XUẤT SẮC',
+        leadership: [
+          { id: 'dp-gd', name: 'Nguyễn Văn A', role: 'Giám đốc', responsibility: 'Điều hành chung', parentId: null },
+          { id: 'dp-gdda', name: 'Trần Quốc B', role: 'Giám đốc dự án', responsibility: 'Kỹ thuật & Tiến độ', parentId: 'dp-gd' },
+          { id: 'dp-cht', name: 'Phạm Minh C', role: 'Chỉ huy trưởng', responsibility: 'Thi công hiện trường', parentId: 'dp-gdda' },
+          { id: 'dp-chp', name: 'Lê Hoàng D', role: 'Chỉ huy phó', responsibility: 'Quản lý an toàn', parentId: 'dp-cht' },
+          { id: 'dp-gs', name: 'Vũ Hùng E', role: 'Giám sát', responsibility: 'Vật tư & Thiết bị', parentId: 'dp-chp' },
+          { id: 'dp-tk', name: 'Phạm Thị F', role: 'Thư ký', responsibility: 'Hồ sơ & Tài liệu', parentId: 'dp-chp' }
+        ],
+        employees: [
+          { name: 'Lê Minh Đ', position: 'Thợ Điện', location: 'Tháp S1 - Tầng 2', phone: '0981.111.001' },
+          { name: 'Vũ Hùng E', position: 'Thợ Điện', location: 'Tháp S1 - Tầng 4', phone: '0981.111.002' },
+          { name: 'Trần Sơn F', position: 'Thợ Điện', location: 'Hầm B1 - Khu A', phone: '0981.111.003' },
+          { name: 'Hoàng Việt G', position: 'Thợ Hàn', location: 'Hầm B2 - Khu B', phone: '0981.111.004' },
+          { name: 'Nguyễn Tuấn H', position: 'Công Nhân Khác', location: 'Khu vực ngoài', phone: '0981.111.005' }
+        ]
+      },
+      'dinh-an': {
+        name: 'ĐỈNH AN',
+        scope: 'Hệ thống Điện & Điện nhẹ - Tháp S2, Hầm B1, Landscape',
+        system: 'Điện & Điện nhẹ',
+        contact: 'Trần Thanh B',
+        phone: '0912.345.678',
+        workers: 38,
+        engineers: 3,
+        rating: 'XUẤT SẮC',
+        leadership: [
+          { id: 'dip-gd', name: 'Trần Thanh B', role: 'Giám đốc', responsibility: 'Đối ngoại & Kế hoạch', parentId: null },
+          { id: 'dip-gdda', name: 'Bùi Tuấn C', role: 'Giám đốc dự án', responsibility: 'Hồ sơ & Chất lượng', parentId: 'dip-gd' },
+          { id: 'dip-cht', name: 'Đặng Hải D', role: 'Chỉ huy trưởng', responsibility: 'Khu vực Tháp S2', parentId: 'dip-gdda' },
+          { id: 'dip-chp', name: 'Phan Anh E', role: 'Chỉ huy phó', responsibility: 'Hạ tầng & Cáp ngầm', parentId: 'dip-cht' },
+          { id: 'dip-gs', name: 'Lý Quốc F', role: 'Giám sát', responsibility: 'Hệ thống kiểm soát', parentId: 'dip-chp' }
+        ],
+        employees: [
+          { name: 'Phan Anh E', position: 'Thợ Điện', location: 'Tháp S2 - Tầng 1', phone: '0912.222.001' },
+          { name: 'Lý Quốc F', position: 'Thợ Điện', location: 'Tháp S2 - Tầng 3', phone: '0912.222.002' },
+          { name: 'Mai Đức G', position: 'Thợ Lắp Đặt', location: 'Landscape ngoài trời', phone: '0912.222.003' },
+          { name: 'Võ Hùng H', position: 'Công Nhân Khác', location: 'Hầm B1 - Zone 2', phone: '0912.222.004' }
+        ]
+      },
+      'phan-nguyen': {
+        name: 'PHAN NGUYỄN',
+        scope: 'Hệ thống Cấp thoát nước - Toàn bộ Công trình',
+        system: 'Cấp thoát nước',
+        contact: 'Phạm Minh C',
+        phone: '0933.456.789',
+        workers: 52,
+        engineers: 4,
+        rating: 'TỐT',
+        leadership: [
+          { id: 'pn-gd', name: 'Phạm Minh C', role: 'Giám đốc', responsibility: 'Quản lý chung', parentId: null },
+          { id: 'pn-gdda', name: 'Nguyễn Cường D', role: 'Giám đốc dự án', responsibility: 'Kỹ thuật & Shopdrawing', parentId: 'pn-gd' },
+          { id: 'pn-cht', name: 'Đặng Minh E', role: 'Chỉ huy trưởng', responsibility: 'Tuyến ống chính hầm', parentId: 'pn-gdda' },
+          { id: 'pn-chp', name: 'Vũ Thắng F', role: 'Chỉ huy phó', responsibility: 'Thiết bị vệ sinh', parentId: 'pn-cht' },
+          { id: 'pn-gs', name: 'Hoàng Tùng G', role: 'Giám sát', responsibility: 'Hệ thống xử lý nước', parentId: 'pn-chp' }
+        ],
+        employees: [
+          { name: 'Vũ Thắng F', position: 'Thợ Ống', location: 'Hầm B1 - Trục đứng', phone: '0933.333.001' },
+          { name: 'Hoàng Tùng G', position: 'Thợ Ống', location: 'Tháp S1 - Khu vệ sinh', phone: '0933.333.002' },
+          { name: 'Lê Dũng H', position: 'Thợ Hàn', location: 'Trạm bơm xử lý nước', phone: '0933.333.003' },
+          { name: 'Trần Quân I', position: 'Công Nhân Khác', location: 'Hạ tầng ngoài nhà', phone: '0933.333.004' }
+        ]
+      },
+      'han-viet': {
+        name: 'HÀN VIỆT',
+        scope: 'Hệ thống Điều hòa Thông gió - Toàn bộ Công trình',
+        system: 'Điều hòa Thông gió',
+        contact: 'Lê Quốc D',
+        phone: '0944.567.890',
+        workers: 35,
+        engineers: 3,
+        rating: 'XUẤT SẮC',
+        leadership: [
+          { id: 'hv-gd', name: 'Lê Quốc D', role: 'Giám đốc', responsibility: 'Điều hành chiến lược', parentId: null },
+          { id: 'hv-gdda', name: 'Chu Hải E', role: 'Giám đốc dự án', responsibility: 'Vận hành hệ thống', parentId: 'hv-gd' },
+          { id: 'hv-cht', name: 'Võ Nam F', role: 'Chỉ huy trưởng', responsibility: 'Hạng mục Chiller & AHU', parentId: 'hv-gdda' },
+          { id: 'hv-chp', name: 'Ngô Quân G', role: 'Chỉ huy phó', responsibility: 'Thông gió & Ống gió', parentId: 'hv-cht' },
+          { id: 'hv-gs', name: 'Bùi Thành H', role: 'Giám sát', responsibility: 'Kiểm soát khối lượng', parentId: 'hv-chp' }
+        ],
+        employees: [
+          { name: 'Ngô Quân G', position: 'Kỹ Sư Lạnh', location: 'Phòng Chiller hầm', phone: '0944.444.001' },
+          { name: 'Bùi Thành H', position: 'Kỹ Sư Lạnh', location: 'Trần Tháp S1', phone: '0944.444.002' },
+          { name: 'Trương Minh I', position: 'Thợ Lắp Đặt', location: 'Hầm B2 - Ống gió', phone: '0944.444.003' },
+          { name: 'Đặng Sơn J', position: 'Công Nhân Khác', location: 'Khu VRF văn phòng', phone: '0944.444.004' }
+        ]
+      },
+      'thuan-thien': {
+        name: 'THUẬN THIÊN',
+        scope: 'Hệ thống Phòng cháy Chữa cháy - Toàn bộ Công trình',
+        system: 'Phòng cháy Chữa cháy',
+        contact: 'Hoàng Văn E',
+        phone: '0955.678.901',
+        workers: 28,
+        engineers: 2,
+        rating: 'TỐT',
+        leadership: [
+          { id: 'tt-gd', name: 'Hoàng Văn E', role: 'Giám đốc', responsibility: 'Chỉ đạo chung', parentId: null },
+          { id: 'tt-cht', name: 'Phan Văn F', role: 'Chỉ huy trưởng', responsibility: 'Thi công PCCC & báo cháy', parentId: 'tt-gd' }
+        ],
+        employees: [
+          { name: 'Phan Văn F', position: 'Kỹ Sư PCCC', location: 'Toàn công trình', phone: '0955.555.001' },
+          { name: 'Lý Thành G', position: 'Thợ Lắp Đặt', location: 'Trục đứng PCCC', phone: '0955.555.002' }
+        ]
+      }
+    };
+    window.subcontractorsData = subcontractorsData;
+
+    /* Render thẻ nhà thầu phụ từ subcontractorsData — tránh trùng dữ liệu trong HTML */
+    const SUBCON_COLORS = {
+      'dat-phan': 'orange', 'dinh-an': 'blue', 'phan-nguyen': 'cyan',
+      'han-viet': 'green', 'thuan-thien': 'red'
+    };
+
+    function renderSubcontractorCards() {
+      const grid = document.getElementById('subcontractors-grid');
+      if (!grid) return;
+      grid.innerHTML = Object.entries(subcontractorsData).map(([id, d]) => {
+        const color = SUBCON_COLORS[id] || 'blue';
+        // location = phần sau dấu " - " trong scope (nếu có)
+        const parts = String(d.scope || '').split(' - ');
+        const location = parts.length > 1 ? parts.slice(1).join(' - ') : (d.scope || '');
+        return `
+          <div class="accent-card accent-${color} subcontractor-card" onclick="switchToSubcontractorDetail('${id}', this, 'bg-art-subcontractors')">
+            <div class="card-header">
+              <div class="card-title-group">
+                <h3 class="card-title">${escapeHTML(d.name)}</h3>
+              </div>
+            </div>
+            <div class="card-content">
+              <p class="card-meta-line"><i data-lucide="layers"></i> <span>${escapeHTML(d.system)}</span></p>
+              <p class="card-meta-line"><i data-lucide="map-pin"></i> <span>${escapeHTML(location)}</span></p>
+              <p class="card-meta-line"><i data-lucide="user"></i> <span>${escapeHTML(d.contact)}</span></p>
+              <p class="card-meta-line"><i data-lucide="phone"></i> <span>${escapeHTML(d.phone)}</span></p>
+              <div class="card-stats">
+                <span class="stat-item">
+                  <span class="stat-value worker-count">${d.workers}</span>
+                  <span class="stat-label">Công nhân</span>
+                </span>
+                <span class="stat-divider">/</span>
+                <span class="stat-item">
+                  <span class="stat-value engineer-count">${d.engineers}</span>
+                  <span class="stat-label">Cán bộ kỹ thuật</span>
+                </span>
+              </div>
+            </div>
+          </div>`;
+      }).join('');
+      if (window.lucide && lucide.createIcons) lucide.createIcons();
+    }
+
+    document.addEventListener('DOMContentLoaded', renderSubcontractorCards);
+  </script>
+
+  <!-- Supabase JS Client CDN -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <script>
+    // Khởi tạo Supabase client toàn cục
+    const SUPABASE_URL = "https://ljfyfulmytfmvgevioee.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxqZnlmdWxteXRmbXZnZXZpb2VlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODI1MDU1NDEsImV4cCI6MjA5ODA4MTU0MX0.ZtjcLxUfS1AYpINbsnbEJH81lNos_pYSncgqS6VtF28";
+    window.supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  </script>
+
+  <!-- ECO Store: tầng dữ liệu async-first (adapter localStorage -> Supabase). PHẢI NẠP ĐẦU TIÊN. -->
+  <script src="eco-store.js?v=13"></script>
+  <!-- ECO Google Drive Integration & Simulator -->
+  <script src="eco-drive.js?v=1"></script>
+  <!-- ECO Coverflow Tab Engine -->
+  <script src="eco-coverflow.js?v=12"></script>
+  <!-- ECO Modules: PO & Kho -->
+  <script src="eco-modules.js?v=13"></script>
+  <!-- ECO PDF Export: Ricons PO / report print layer -->
+  <script src="eco-pdf.js?v=3"></script>
+  <!-- ECO BOQ Module -->
+  <script src="eco-boq.js?v=13"></script>
+  <!-- ECO Submittals Module (Shopdrawing / MOS / MAS) -->
+  <script src="eco-submittals.js?v=13"></script>
+  <!-- ECO Auth & RBAC: phân quyền (client-side gating). Nạp SAU các module. -->
+  <script src="eco-auth.js?v=16"></script>
+
+</body>
+</html>
