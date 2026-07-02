@@ -3142,7 +3142,7 @@ const OverviewModule = {
       ECO_UI.toast('Chỉ quản trị viên hệ thống mới có quyền đồng bộ vật tư!', 'error');
       return;
     }
-    if (!confirm('Bạn có muốn đồng bộ lại danh mục Vật tư từ bảng BOQ hiện tại không? Thao tác này sẽ tạo hoặc cập nhật mã hiệu, tên, đơn vị tính và hệ thống của vật tư dựa trên các hạng mục BOQ.')) {
+    if (!confirm('Bạn có muốn đồng bộ lại danh mục Vật tư từ bảng BOQ hiện tại không? Hệ thống sẽ cập nhật thông tin và giữ nguyên các vật tư tự thêm ngoài BOQ.')) {
       return;
     }
     ECO_UI.toast('Đang đồng bộ danh mục vật tư từ BOQ...', 'info');
@@ -3153,20 +3153,34 @@ const OverviewModule = {
         return;
       }
       
-      const newMats = boq.map((b, index) => ({
-        id: index + 1,
-        name: b.name,
-        code: b.code || b.id,
-        system: b.system,
-        unit: b.unit || '—',
-        boqItemId: b.id,
-        minStock: 0,
-        spec: '',
-        notes: 'Đồng bộ từ BOQ'
-      }));
+      const existingMats = ECO_Storage.getMaterials() || [];
+      const mergedMats = [...existingMats];
+
+      boq.forEach(b => {
+        const exist = mergedMats.find(m => String(m.boqItemId) === String(b.id));
+        if (exist) {
+          exist.name = b.name;
+          exist.code = b.code || exist.code || `BOQ-${b.id}`;
+          exist.system = b.system;
+          exist.unit = b.unit || exist.unit || '—';
+        } else {
+          const nextMatId = ECO_Storage.nextId(mergedMats);
+          mergedMats.push({
+            id: nextMatId,
+            name: b.name,
+            code: b.code || `BOQ-${b.id}`,
+            system: b.system,
+            unit: b.unit || '—',
+            boqItemId: b.id,
+            minStock: 0,
+            spec: '',
+            notes: 'Đồng bộ từ BOQ'
+          });
+        }
+      });
       
-      await ECO_Storage.saveMaterials(newMats);
-      ECO_UI.toast('Đồng bộ thành công ' + newMats.length + ' vật tư từ BOQ!', 'success');
+      await ECO_Storage.saveMaterials(mergedMats);
+      ECO_UI.toast('Đồng bộ thành công ' + boq.length + ' vật tư từ BOQ! Giữ nguyên các vật tư khác.', 'success');
       this.render();
     } catch (e) {
       console.error(e);
@@ -3508,70 +3522,76 @@ window.openGuideModal = function(moduleId) {
 // ===== KHAI BÁO DANH MỤC VẬT TƯ MODULE =====
 const DanhMucVatTuModule = {
   render() {
-    const el = document.getElementById('danh-muc-vat-tu-content');
-    if (!el) return;
+    const targets = ['danh-muc-vat-tu-content', 'danh-muc-vat-tu-content-materials'];
+    let rendered = false;
+    targets.forEach(id => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      rendered = true;
 
-    const materials = ECO_Storage.getMaterials();
-    const boq = (typeof ECO_BOQStorage !== 'undefined') ? ECO_BOQStorage.getOrSeedBOQ() : [];
-    const isSuperAdmin = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
+      const materials = ECO_Storage.getMaterials();
+      const boq = (typeof ECO_BOQStorage !== 'undefined') ? ECO_BOQStorage.getOrSeedBOQ() : [];
+      const isSuperAdmin = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
 
-    el.innerHTML = `
-      <div class="glass-panel content-table-panel">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.5);">
-          <div style="display:flex;align-items:center;gap:12px;">
-            <h3 style="font-size:1rem;font-weight:700;margin:0;">Khai báo Danh mục Vật tư cung cấp</h3>
-            <span style="background:rgba(0,86,255,0.1);color:#0056FF;border-radius:20px;padding:2px 10px;font-size:0.78rem;font-weight:700;">${materials.length} vật tư</span>
+      el.innerHTML = `
+        <div class="glass-panel content-table-panel">
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.5);">
+            <div style="display:flex;align-items:center;gap:12px;">
+              <h3 style="font-size:1rem;font-weight:700;margin:0;">Khai báo Danh mục Vật tư cung cấp</h3>
+              <span style="background:rgba(0,86,255,0.1);color:#0056FF;border-radius:20px;padding:2px 10px;font-size:0.78rem;font-weight:700;">${materials.length} vật tư</span>
+            </div>
+            ${isSuperAdmin ? `
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-outline" onclick="DanhMucVatTuModule.syncFromBOQ()" style="font-size:0.85rem;padding:8px 18px;color:#D97706;border-color:rgba(217,119,6,0.4);" title="Đồng bộ toàn bộ danh mục vật tư từ BOQ hiện tại">
+                <i data-lucide="refresh-cw" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thay thế bằng BOQ
+              </button>
+              <button class="btn btn-outline btn-blue" onclick="DanhMucVatTuModule.addMaterial()" style="font-size:0.85rem;padding:8px 18px;">
+                <i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thêm Vật tư mới
+              </button>
+            </div>
+            ` : ''}
           </div>
-          ${isSuperAdmin ? `
-          <div style="display:flex;gap:8px;">
-            <button class="btn btn-outline" onclick="DanhMucVatTuModule.syncFromBOQ()" style="font-size:0.85rem;padding:8px 18px;color:#D97706;border-color:rgba(217,119,6,0.4);" title="Đồng bộ toàn bộ danh mục vật tư từ BOQ hiện tại">
-              <i data-lucide="refresh-cw" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thay thế bằng BOQ
-            </button>
-            <button class="btn btn-outline btn-blue" onclick="DanhMucVatTuModule.addMaterial()" style="font-size:0.85rem;padding:8px 18px;">
-              <i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thêm Vật tư mới
-            </button>
+          <div class="table-container" style="margin:0;border-radius:0;">
+            <table class="tech-table">
+              <thead>
+                <tr>
+                  <th style="width:120px;">Mã vật tư</th>
+                  <th>Tên vật tư (quy cách chi tiết)</th>
+                  <th style="width:100px;text-align:center;">Đơn vị</th>
+                  <th>Hạng mục BOQ liên kết</th>
+                  <th style="width:180px;">Hệ thống MEP</th>
+                  ${isSuperAdmin ? `<th style="width:120px;text-align:center;">Thao tác</th>` : ''}
+                </tr>
+              </thead>
+              <tbody>
+                ${materials.length === 0
+                  ? ECO_UI.tableEmpty(isSuperAdmin ? 6 : 5, 'Chưa có vật tư nào được khai báo.')
+                  : materials.map(m => {
+                      const matchedBoq = boq.find(b => String(b.id) === String(m.boqItemId));
+                      const boqText = matchedBoq ? `[${matchedBoq.code || '—'}] ${matchedBoq.name}` : '<span style="color:#94A3B8;">Chưa liên kết</span>';
+                      const sysName = (typeof ECO_SYSTEMS !== 'undefined' ? ECO_SYSTEMS.find(s => s.id === m.system)?.name : null) || m.system || '—';
+                      return `
+                        <tr>
+                          <td style="font-weight:700;color:#0056FF;">${m.code || '—'}</td>
+                          <td style="font-weight:600;color:#0F172A;">${m.name || '—'}</td>
+                          <td style="text-align:center;">${m.unit || '—'}</td>
+                          <td style="font-size:0.82rem;">${boqText}</td>
+                          <td><span style="font-size:0.82rem;background:rgba(0,51,160,0.06);color:#0033A0;padding:3px 8px;border-radius:6px;font-weight:600;">${sysName}</span></td>
+                          ${isSuperAdmin ? `
+                          <td style="text-align:center;">
+                            <button class="btn btn-outline" onclick="DanhMucVatTuModule.editMaterial(${m.id})" style="font-size:0.75rem;padding:4px 8px;margin-right:4px;" title="Sửa vật tư"><i data-lucide="pencil" style="width:12px;height:12px;"></i></button>
+                            <button class="btn btn-outline" onclick="DanhMucVatTuModule.deleteMaterial(${m.id})" style="font-size:0.75rem;padding:4px 8px;color:#E31837;border-color:rgba(227,24,55,0.15);" title="Xóa vật tư"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
+                          </td>
+                          ` : ''}
+                        </tr>`;
+                    }).join('')}
+              </tbody>
+            </table>
           </div>
-          ` : ''}
-        </div>
-        <div class="table-container" style="margin:0;border-radius:0;">
-          <table class="tech-table">
-            <thead>
-              <tr>
-                <th style="width:120px;">Mã vật tư</th>
-                <th>Tên vật tư (quy cách chi tiết)</th>
-                <th style="width:100px;text-align:center;">Đơn vị</th>
-                <th>Hạng mục BOQ liên kết</th>
-                <th style="width:180px;">Hệ thống MEP</th>
-                ${isSuperAdmin ? `<th style="width:120px;text-align:center;">Thao tác</th>` : ''}
-              </tr>
-            </thead>
-            <tbody>
-              ${materials.length === 0
-                ? ECO_UI.tableEmpty(isSuperAdmin ? 6 : 5, 'Chưa có vật tư nào được khai báo.')
-                : materials.map(m => {
-                    const matchedBoq = boq.find(b => String(b.id) === String(m.boqItemId));
-                    const boqText = matchedBoq ? `[${matchedBoq.code || '—'}] ${matchedBoq.name}` : '<span style="color:#94A3B8;">Chưa liên kết</span>';
-                    const sysName = (typeof ECO_SYSTEMS !== 'undefined' ? ECO_SYSTEMS.find(s => s.id === m.system)?.name : null) || m.system || '—';
-                    return `
-                      <tr>
-                        <td style="font-weight:700;color:#0056FF;">${m.code || '—'}</td>
-                        <td style="font-weight:600;color:#0F172A;">${m.name || '—'}</td>
-                        <td style="text-align:center;">${m.unit || '—'}</td>
-                        <td style="font-size:0.82rem;">${boqText}</td>
-                        <td><span style="font-size:0.82rem;background:rgba(0,51,160,0.06);color:#0033A0;padding:3px 8px;border-radius:6px;font-weight:600;">${sysName}</span></td>
-                        ${isSuperAdmin ? `
-                        <td style="text-align:center;">
-                          <button class="btn btn-outline" onclick="DanhMucVatTuModule.editMaterial(${m.id})" style="font-size:0.75rem;padding:4px 8px;margin-right:4px;" title="Sửa vật tư"><i data-lucide="pencil" style="width:12px;height:12px;"></i></button>
-                          <button class="btn btn-outline" onclick="DanhMucVatTuModule.deleteMaterial(${m.id})" style="font-size:0.75rem;padding:4px 8px;color:#E31837;border-color:rgba(227,24,55,0.15);" title="Xóa vật tư"><i data-lucide="trash-2" style="width:12px;height:12px;"></i></button>
-                        </td>
-                        ` : ''}
-                      </tr>`;
-                  }).join('')}
-            </tbody>
-          </table>
-        </div>
-      </div>`;
+        </div>`;
+    });
 
+    if (!rendered) return;
     if (window.lucide && lucide.createIcons) lucide.createIcons();
     if (window.updateContentTableHeights) setTimeout(window.updateContentTableHeights, 0);
   },
@@ -3755,7 +3775,8 @@ if (typeof ECO_Cache !== 'undefined') {
       }
       // Reload DanhMucVatTu if visible
       const dmEl = document.getElementById('purchasing-danh-muc-vat-tu');
-      if (dmEl && dmEl.style.display === 'block') {
+      const matDmEl = document.getElementById('materials-danh-muc');
+      if ((dmEl && dmEl.style.display === 'block') || (matDmEl && matDmEl.style.display === 'block')) {
         DanhMucVatTuModule.render();
       }
     });

@@ -437,6 +437,7 @@
               <div class="coverflow-item" data-material-section="kho" data-kho-tab="stock" onclick="switchMaterialsSection('kho'); KhoModule.setTab('stock')"><i data-lucide="warehouse" style="width:16px;height:16px;"></i> Tồn kho hiện tại</div>
               <div class="coverflow-item" data-material-section="kho" data-kho-tab="history" onclick="switchMaterialsSection('kho'); KhoModule.setTab('history')"><i data-lucide="history" style="width:16px;height:16px;"></i> Lịch sử nhập / xuất</div>
               <div class="coverflow-item" data-material-section="catalog" onclick="switchMaterialsSection('catalog'); MatModule.render()"><i data-lucide="ruler" style="width:16px;height:16px;"></i> Khối lượng định mức</div>
+              <div class="coverflow-item" data-material-section="danh-muc" onclick="switchMaterialsSection('danh-muc'); DanhMucVatTuModule.render()"><i data-lucide="clipboard-list" style="width:16px;height:16px;"></i> Khai báo Vật tư</div>
             </div>
           </div>
           <button class="module-help-btn" onclick="openGuideModal('materials')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
@@ -456,6 +457,12 @@
 
         <div id="materials-catalog" class="materials-section" style="display:none;">
           <div id="mat-content">
+            <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải định mức vật tư...</div>
+          </div>
+        </div>
+
+        <div id="materials-danh-muc" class="materials-section" style="display:none;">
+          <div id="danh-muc-vat-tu-content-materials">
             <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải danh mục vật tư...</div>
           </div>
         </div>
@@ -814,6 +821,9 @@
         } else if (activeItem && activeItem.dataset.materialSection === 'catalog') {
           switchMaterialsSection('catalog');
           if (typeof MatModule !== 'undefined') MatModule.render();
+        } else if (activeItem && activeItem.dataset.materialSection === 'danh-muc') {
+          switchMaterialsSection('danh-muc');
+          if (typeof DanhMucVatTuModule !== 'undefined') DanhMucVatTuModule.render();
         } else {
           switchMaterialsSection('overview');
           if (typeof OverviewModule !== 'undefined') OverviewModule.render();
@@ -839,7 +849,7 @@
       const target = document.getElementById('materials-' + section);
       if (target) target.style.display = 'block';
 
-      if (section === 'overview' || section === 'catalog') {
+      if (section === 'overview' || section === 'catalog' || section === 'danh-muc') {
         document.querySelectorAll('#coverflow-materials .coverflow-item').forEach(item => {
           item.classList.toggle('active', item.dataset.materialSection === section);
         });
