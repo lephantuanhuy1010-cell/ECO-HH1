@@ -2395,6 +2395,8 @@ const KhoModule = {
     const po = pos.find(p => String(p.id) === String(poId));
     if (!po) return;
 
+    const materials = ECO_Storage.getMaterials();
+
     if (subconSelect) subconSelect.style.display = 'none';
     if (subconDisplay) {
       subconDisplay.style.display = 'flex';
@@ -2413,10 +2415,12 @@ const KhoModule = {
         tr.style.opacity = '0.6';
         tr.style.background = 'rgba(241, 245, 249, 0.4)';
       }
+      const mat = materials.find(m => String(m.id) === String(item.matId));
+      const codePref = mat && mat.code ? `[${mat.code}] ` : '';
       tr.innerHTML = `
         <td style="padding:8px 6px;">
           <input type="hidden" class="kho-mat" value="${item.matId}">
-          <div style="font-weight:600;font-size:0.88rem;color:#0F172A;">${item.name || '—'}</div>
+          <div style="font-weight:600;font-size:0.88rem;color:#0F172A;">${codePref}${item.name || '—'}</div>
           <div style="font-size:0.78rem;color:#64748B;margin-top:2px;display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
             <span style="background:rgba(0,86,255,0.08);color:#0056FF;padding:1px 6px;border-radius:4px;font-weight:600;">${item.area || 'Chung'}</span>
             <span>Đặt PO: <strong>${ECO_UI.fmtNum(item.qty, 2)} ${item.unit || ''}</strong></span>
