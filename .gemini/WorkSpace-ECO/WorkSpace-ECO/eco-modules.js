@@ -2277,6 +2277,19 @@ const KhoModule = {
     KhoModule._addKhoItemRow(type);
   },
 
+  _filterPODropdown(subconName) {
+    const poSelect = document.getElementById('k-po');
+    if (!poSelect) return;
+    const currentVal = poSelect.value;
+    const pos = ECO_Storage.getPOs().filter(p => ['approved', 'ordered', 'shipping', 'partially_received'].includes(p.status));
+    const filteredPOs = subconName 
+      ? pos.filter(p => p.subconName === subconName)
+      : pos;
+    let html = `<option value="">-- Nhập ngoài PO --</option>`;
+    html += filteredPOs.map(p => `<option value="${p.id}" ${String(p.id) === String(currentVal) ? 'selected' : ''}>${p.poNo} — ${p.supplier}</option>`).join('');
+    poSelect.innerHTML = html;
+  },
+
   _onPOChange(poId) {
     const tbody = document.getElementById('kho-items-body');
     if (!tbody) return;
@@ -2289,7 +2302,10 @@ const KhoModule = {
       if (addBtn) addBtn.style.display = 'block';
       if (subconSelect) subconSelect.style.display = 'block';
       if (subconDisplay) subconDisplay.style.display = 'none';
-      if (subconSelect) subconSelect.value = '';
+      if (subconSelect) {
+        subconSelect.value = '';
+        this._filterPODropdown('');
+      }
       this._addKhoItemRow('in');
       return;
     }
@@ -2366,6 +2382,9 @@ const KhoModule = {
       const currentVal = select.value;
       this._populateMatSelectOptions(select, subconName, type, currentVal);
     });
+    if (type === 'in') {
+      this._filterPODropdown(subconName);
+    }
   },
 
   _populateMatSelectOptions(select, subconName, type, selectedVal) {
@@ -3906,10 +3925,7 @@ async function sanitizeDatabaseOrphans() {
   }
 }
 
-// Chạy dọn dẹp sau khi DOM sẵn sàng
-document.addEventListener('DOMContentLoaded', () => {
-  setTimeout(sanitizeDatabaseOrphans, 500);
-});
+
 
 
 const TienDoModule = {
