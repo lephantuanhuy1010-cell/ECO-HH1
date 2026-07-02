@@ -2171,8 +2171,67 @@ const KhoModule = {
     this.render();
   },
 
+  _onFilterTypeChange(val) {
+    this._filterType = val;
+    this.render();
+  },
+
+  _onFilterSubconChange(val) {
+    this._filterSubcon = val;
+    this.render();
+  },
+
+  _clearFilters() {
+    this._filterType = 'all';
+    this._filterSubcon = 'all';
+    this.render();
+  },
+
   _renderHistory(logs) {
-    const sorted = logs.slice().sort((a, b) => b.id - a.id);
+    const typeFilter = this._filterType || 'all';
+    const subconFilter = this._filterSubcon || 'all';
+
+    let filtered = logs;
+    if (typeFilter !== 'all') {
+      filtered = filtered.filter(l => l.type === typeFilter);
+    }
+    if (subconFilter !== 'all') {
+      if (subconFilter === 'Chung') {
+        filtered = filtered.filter(l => !l.subconName || l.subconName === 'Chung');
+      } else {
+        filtered = filtered.filter(l => l.subconName === subconFilter);
+      }
+    }
+
+    const sorted = filtered.slice().sort((a, b) => b.id - a.id);
+    const subcons = Object.values(window.subcontractorsData || {});
+
+    const filterBarHtml = `
+      <div style="display:flex;gap:16px;padding:12px 24px;background:rgba(0,0,0,0.02);border-bottom:1px solid rgba(0,0,0,0.06);align-items:center;flex-wrap:wrap;">
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:0.8rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.02em;">Phân loại:</span>
+          <select onchange="KhoModule._onFilterTypeChange(this.value)" class="eco-select" style="font-size:0.82rem;padding:4px 8px;width:120px;height:32px;margin:0;cursor:pointer;">
+            <option value="all" ${typeFilter === 'all' ? 'selected' : ''}>— Tất cả —</option>
+            <option value="in" ${typeFilter === 'in' ? 'selected' : ''}>Nhập kho</option>
+            <option value="out" ${typeFilter === 'out' ? 'selected' : ''}>Xuất kho</option>
+          </select>
+        </div>
+        <div style="display:flex;align-items:center;gap:6px;">
+          <span style="font-size:0.8rem;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:0.02em;">Nhà thầu phụ:</span>
+          <select onchange="KhoModule._onFilterSubconChange(this.value)" class="eco-select" style="font-size:0.82rem;padding:4px 8px;width:180px;height:32px;margin:0;cursor:pointer;">
+            <option value="all" ${subconFilter === 'all' ? 'selected' : ''}>— Tất cả —</option>
+            ${subcons.map(s => `<option value="${s.name}" ${subconFilter === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
+            <option value="Chung" ${subconFilter === 'Chung' ? 'selected' : ''}>Chung</option>
+          </select>
+        </div>
+        ${(typeFilter !== 'all' || subconFilter !== 'all') ? `
+          <button onclick="KhoModule._clearFilters()" class="btn btn-outline" style="font-size:0.75rem;padding:4px 10px;height:32px;border-color:rgba(227,24,55,0.3);color:#E31837;font-weight:700;display:inline-flex;align-items:center;gap:4px;cursor:pointer;">
+            <i data-lucide="x" style="width:12px;height:12px;"></i> Xóa lọc
+          </button>
+        ` : ''}
+      </div>
+    `;
+
     return `
       <div class="glass-panel content-table-panel">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.5);">
@@ -2182,6 +2241,7 @@ const KhoModule = {
             <button class="btn btn-outline" onclick="KhoModule.createLog('out')" style="font-size:0.85rem;padding:8px 16px;color:#E31837;border-color:#E31837;"><i data-lucide="arrow-up-from-line" style="width:15px;height:15px;margin-right:4px;"></i> Xuất kho</button>
           </div>
         </div>
+        ${filterBarHtml}
         <div class="table-container" style="margin:0;border-radius:0;">
           <table class="tech-table">
             <thead><tr>
@@ -2193,7 +2253,7 @@ const KhoModule = {
             </tr></thead>
             <tbody>
               ${sorted.length === 0
-                ? ECO_UI.tableEmpty(5, 'Chưa có phiếu nào. Nhấn "Nhập kho" để bắt đầu.')
+                ? ECO_UI.tableEmpty(5, 'Không tìm thấy phiếu kho nào khớp với bộ lọc.')
                 : sorted.map(l => {
                     const _fc = (l.deliveryNote && l.deliveryNote.url ? 1 : 0) + (Array.isArray(l.warehousePhotos) ? l.warehousePhotos.filter(p => p && p.url).length : 0) + (l.dispatchSlip && l.dispatchSlip.url ? 1 : 0);
                     return `
