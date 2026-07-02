@@ -100,11 +100,13 @@ const ECO_Storage = {
 
       let newStatus = p.status;
       if (['approved', 'ordered', 'shipping', 'partially_received', 'received'].includes(p.status)) {
-        const totalOrdered = items.reduce((sum, it) => sum + (parseFloat(it.qty) || 0), 0);
-        const totalReceived = items.reduce((sum, it) => sum + (parseFloat(it.receivedQty) || 0), 0);
-        if (totalReceived >= totalOrdered && totalOrdered > 0) {
+        const hasItems = items.length > 0;
+        const allFullyReceived = hasItems && items.every(it => (parseFloat(it.receivedQty) || 0) >= (parseFloat(it.qty) || 0));
+        const anyReceived = items.some(it => (parseFloat(it.receivedQty) || 0) > 0);
+
+        if (allFullyReceived) {
           newStatus = 'received';
-        } else if (totalReceived > 0) {
+        } else if (anyReceived) {
           newStatus = 'partially_received';
         } else if (p.status === 'received' || p.status === 'partially_received') {
           newStatus = 'ordered';
