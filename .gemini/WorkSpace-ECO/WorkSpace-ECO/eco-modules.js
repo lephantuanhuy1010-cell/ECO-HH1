@@ -998,7 +998,7 @@ const POModule = {
       let failCount = 0;
 
       function cleanText(txt) {
-        return String(txt || '').normalize('NFC').toLowerCase().replace(/[\s\-\.\_]/g, '');
+        return String(txt || '').normalize('NFC').toLowerCase().replace(/[\s\-\.\_\,]/g, '');
       }
 
       const newMatsToDeclare = [];
@@ -1016,19 +1016,38 @@ const POModule = {
         if (!code && !name) continue;
 
         let matched = null;
-        if (code) {
-          const cleanCodeStr = cleanText(code);
-          matched = allMats.find(m => m.code && cleanText(m.code) === cleanCodeStr);
+        const cleanCodeStr = code ? cleanText(code) : '';
+        const cleanNameStr = name ? cleanText(name) : '';
+
+        // 1. Tìm khớp cả Mã và Tên (Độ ưu tiên cao nhất)
+        if (cleanCodeStr && cleanNameStr) {
+          matched = allMats.find(m => 
+            m.code && cleanText(m.code) === cleanCodeStr && 
+            m.name && cleanText(m.name) === cleanNameStr
+          );
         }
 
-        if (!matched && name) {
-          const cleanName = cleanText(name);
-          matched = allMats.find(m => {
-            const cleanMName = cleanText(m.name);
-            return (cleanMName === cleanName) || 
-                   (cleanMName.includes(cleanName) && cleanName.length > 4) ||
-                   (cleanName.includes(cleanMName) && cleanMName.length > 4);
-          });
+        // 2. Nếu không khớp cả hai, tìm khớp theo Tên (vì mô tả vật tư thường rất cụ thể và chính xác)
+        if (!matched && cleanNameStr) {
+          matched = allMats.find(m => m.name && cleanText(m.name) === cleanNameStr);
+          
+          // Thử tìm khớp tương đối theo tên (nhưng chặt chẽ hơn: độ dài ký tự khớp lớn)
+          if (!matched) {
+            matched = allMats.find(m => {
+              if (!m.name) return false;
+              const cleanMName = cleanText(m.name);
+              return (cleanMName.includes(cleanNameStr) && cleanNameStr.length > 4) ||
+                     (cleanNameStr.includes(cleanMName) && cleanMName.length > 4);
+            });
+          }
+        }
+
+        // 3. Nếu vẫn không khớp, chỉ khớp theo Mã nếu Mã đó không phải là các mã áp lực / đơn vị chung chung
+        if (!matched && cleanCodeStr) {
+          const genericCodes = new Set(['pn5', 'pn6', 'pn9', 'pn10', 'pn125', 'pn16', 'pn20', 'pn25', 'm', 'kg', 'cai', 'co', 'te']);
+          if (!genericCodes.has(cleanCodeStr)) {
+            matched = allMats.find(m => m.code && cleanText(m.code) === cleanCodeStr);
+          }
         }
 
         if (!matched) {
