@@ -2687,23 +2687,156 @@ const KhoModule = {
             <tr>
               <th style="padding:10px 14px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;">Vật tư</th>
               <th style="padding:10px 14px;width:130px;font-size:0.8rem;font-weight:700;color:#475569;">Quy cách</th>
-              <th style="padding:10px 14px;width:110px;text-align:right;font-size:0.8rem;font-weight:700;color:#475569;">Số lượng</th>
+              <th style="padding:10px 14px;width:130px;text-align:right;font-size:0.8rem;font-weight:700;color:#475569;">Số lượng</th>
             </tr>
           </thead>
           <tbody>
-            ${(log.items || []).map(item => `
+            ${(log.items || []).map((item, idx) => `
               <tr style="border-top:1px solid rgba(0,0,0,0.06);">
                 <td style="padding:10px 14px;font-weight:600;">${item.name || '—'}</td>
                 <td style="padding:10px 14px;font-size:0.85rem;color:#475569;">${item.variant || 'Tiêu chuẩn'}</td>
-                <td style="padding:10px 14px;text-align:right;font-weight:800;color:${log.type === 'in' ? '#15803D' : '#E31837'};">${log.type === 'in' ? '+' : '-'}${ECO_UI.fmtNum(item.qty, 2)} ${item.unit || ''}</td>
+                <td style="padding:10px 14px;text-align:right;">
+                  <span class="log-qty-text" style="font-weight:800;color:${log.type === 'in' ? '#15803D' : '#E31837'};">${log.type === 'in' ? '+' : '-'}${ECO_UI.fmtNum(item.qty, 2)} ${item.unit || ''}</span>
+                  <div class="log-qty-edit-wrapper" style="display:none;align-items:center;justify-content:flex-end;gap:6px;">
+                    <span>${log.type === 'in' ? '+' : '-'}</span>
+                    <input type="number" class="log-qty-input eco-input" data-index="${idx}" value="${item.qty}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;width:80px;font-weight:700;padding:4px 8px;margin:0;">
+                    <span style="font-size:0.85rem;color:#475569;">${item.unit || ''}</span>
+                  </div>
+                </td>
               </tr>`).join('')}
           </tbody>
         </table>
       </div>`,
       `${canEdit ? `<button onclick="KhoModule._deleteLog(${log.id})" class="btn btn-outline" style="padding:9px 20px;color:#E31837;border-color:#E31837;margin-right:auto;">Xóa phiếu</button>` : '<div style="margin-right:auto;"></div>'}
+       ${canEdit ? `<button id="btn-edit-qty" onclick="KhoModule._enableQtyEdit()" class="btn btn-outline btn-blue" style="padding:9px 20px;margin-right:8px;"><i data-lucide="edit" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Sửa số lượng</button>` : ''}
        <button onclick="ECO_UI.closeModal()" class="btn btn-outline" style="padding:9px 20px;">Đóng</button>
-       <button onclick="KhoModule._saveLogAttachments(${log.id})" class="btn btn-primary" style="padding:9px 20px;"><i data-lucide="upload-cloud" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Lưu tài liệu</button>`
+       <button id="btn-save-log" data-log-id="${log.id}" onclick="KhoModule._saveLogAttachments(${log.id})" class="btn btn-primary" style="padding:9px 20px;"><i data-lucide="upload-cloud" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Lưu tài liệu</button>`
     );
+  },
+
+  _enableQtyEdit() {
+    const texts = document.querySelectorAll('.log-qty-text');
+    const edits = document.querySelectorAll('.log-qty-edit-wrapper');
+    const btnEdit = document.getElementById('btn-edit-qty');
+    const btnSave = document.getElementById('btn-save-log');
+    if (!btnEdit || !btnSave) return;
+
+    const isEditing = btnEdit.classList.contains('editing-active');
+    const logId = btnSave.getAttribute('data-log-id');
+
+    if (!isEditing) {
+      // Chuyển sang chế độ sửa
+      texts.forEach(el => el.style.display = 'none');
+      edits.forEach(el => el.style.display = 'flex');
+      btnEdit.classList.add('editing-active');
+      btnEdit.innerHTML = '<i data-lucide="x" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Hủy sửa';
+      btnEdit.style.color = '#E31837';
+      btnEdit.style.borderColor = '#E31837';
+      
+      // Đổi nút Lưu tài liệu thành Lưu số lượng
+      btnSave.setAttribute('onclick', `KhoModule._saveEditedQuantities(${logId})`);
+      btnSave.innerHTML = '<i data-lucide="check" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Lưu số lượng';
+      btnSave.style.background = '#10B981';
+      btnSave.style.borderColor = '#10B981';
+    } else {
+      // Hủy sửa
+      texts.forEach(el => el.style.display = '');
+      edits.forEach(el => el.style.display = 'none');
+      btnEdit.classList.remove('editing-active');
+      btnEdit.innerHTML = '<i data-lucide="edit" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Sửa số lượng';
+      btnEdit.style.color = '';
+      btnEdit.style.borderColor = '';
+      
+      // Reset nút Lưu tài liệu
+      btnSave.setAttribute('onclick', `KhoModule._saveLogAttachments(${logId})`);
+      btnSave.innerHTML = '<i data-lucide="upload-cloud" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>Lưu tài liệu';
+      btnSave.style.background = '';
+      btnSave.style.borderColor = '';
+    }
+    
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+  },
+
+  async _saveEditedQuantities(logId) {
+    const inputs = document.querySelectorAll('.log-qty-input');
+    const logs = ECO_Storage.getInventoryLogs();
+    const logIdx = logs.findIndex(l => l.id == logId);
+    if (logIdx < 0) return;
+    
+    const log = { ...logs[logIdx] };
+    const newItems = log.items.map((item, idx) => {
+      const input = document.querySelector(`.log-qty-input[data-index="${idx}"]`);
+      const val = input ? parseFloat(input.value) : item.qty;
+      return { ...item, qty: isNaN(val) ? 0 : val };
+    });
+
+    if (newItems.some(item => item.qty < 0)) {
+      ECO_UI.toast('Số lượng không được âm!', 'error');
+      return;
+    }
+
+    // Verify stock constraints (if type is out or if we reduce type in)
+    const tempLogs = logs.map((l, idx) => idx === logIdx ? { ...l, items: newItems } : l);
+    
+    // Simulate stock calculation
+    const stock = { "Tất cả": {} };
+    let hasViolation = false;
+    let violationMsg = '';
+
+    tempLogs.forEach(l => {
+      const sign = l.type === 'in' ? 1 : -1;
+      const subcon = l.subconName || 'Chung';
+      if (!stock[subcon]) stock[subcon] = {};
+      
+      (l.items || []).forEach(item => {
+        const qty = (parseFloat(item.qty) || 0) * sign;
+        const v = item.variant || 'Tiêu chuẩn';
+        
+        if (!stock[subcon][item.matId]) stock[subcon][item.matId] = { total: 0, variants: {} };
+        stock[subcon][item.matId].total += qty;
+        stock[subcon][item.matId].variants[v] = (stock[subcon][item.matId].variants[v] || 0) + qty;
+        
+        if (!stock["Tất cả"][item.matId]) stock["Tất cả"][item.matId] = { total: 0, variants: {} };
+        stock["Tất cả"][item.matId].total += qty;
+        stock["Tất cả"][item.matId].variants[v] = (stock["Tất cả"][item.matId].variants[v] || 0) + qty;
+      });
+    });
+
+    // Check if any stock level is negative
+    const materials = ECO_Storage.getMaterials();
+    for (const [subcon, subconStock] of Object.entries(stock)) {
+      for (const [matId, matStock] of Object.entries(subconStock)) {
+        if (matStock.total < -0.001) {
+          const mat = materials.find(m => m.id == matId);
+          hasViolation = true;
+          violationMsg = `Thay đổi số lượng này sẽ làm cho tồn kho của "${mat?.name || 'Vật tư'}" tại phân kho "${subcon}" bị âm (${ECO_UI.fmtNum(matStock.total, 2)} ${mat?.unit || ''}).`;
+          break;
+        }
+        for (const [variant, qty] of Object.entries(matStock.variants)) {
+          if (qty < -0.001) {
+            const mat = materials.find(m => m.id == matId);
+            hasViolation = true;
+            violationMsg = `Thay đổi số lượng này sẽ làm cho quy cách "${variant}" của "${mat?.name || 'Vật tư'}" tại phân kho "${subcon}" bị âm (${ECO_UI.fmtNum(qty, 2)} ${mat?.unit || ''}).`;
+            break;
+          }
+        }
+        if (hasViolation) break;
+      }
+      if (hasViolation) break;
+    }
+
+    if (hasViolation) {
+      ECO_UI.toast(violationMsg, 'error');
+      return;
+    }
+
+    // Save changes
+    logs[logIdx].items = newItems;
+    await ECO_Storage.saveInventoryLogs(logs);
+    
+    ECO_UI.closeModal();
+    ECO_UI.toast('Đã cập nhật số lượng vật tư trong phiếu thành công!', 'success');
+    this.render();
   },
 
   _deleteLog(id) {
