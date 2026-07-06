@@ -590,15 +590,22 @@ const POModule = {
           </select>
         </div>
         <div class="eco-form-group">
-          <label>Nhà thầu phụ</label>
+          <label>Nhà thầu phụ (Chọn 1 hoặc nhiều)</label>
           ${isSub 
             ? `<select id="m-subcon" class="eco-select" disabled>
                  <option value="${mySubName}">${mySubName}</option>
                </select>`
-            : `<select id="m-subcon" class="eco-select">
-                 <option value="">-- Chọn thầu phụ --</option>
-                 ${subcons.map(s => `<option value="${s.name}" ${isEdit && po.subconName === s.name ? 'selected' : ''}>${s.name}</option>`).join('')}
-               </select>`
+            : `<div id="m-subcon-container" style="display:flex;gap:8px;flex-wrap:wrap;padding:4px 8px;border:1px solid rgba(0,0,0,0.08);border-radius:10px;background:rgba(0,0,0,0.015);min-height:38px;align-items:center;box-sizing:border-box;">
+                 ${subcons.map(s => {
+                   const isChecked = isEdit && po.subconName && po.subconName.split(', ').map(x => x.trim()).includes(s.name);
+                   return `
+                     <label style="display:inline-flex;align-items:center;gap:6px;font-size:0.8rem;color:#475569;font-weight:600;cursor:pointer;background:rgba(0,86,255,0.03);padding:4px 10px;border:1px solid rgba(0,86,255,0.08);border-radius:6px;user-select:none;margin:0;">
+                       <input type="checkbox" class="po-subcon-cb" value="${s.name}" ${isChecked ? 'checked' : ''} style="width:14px;height:14px;cursor:pointer;accent-color:#0056FF;">
+                       ${s.name}
+                     </label>
+                   `;
+                 }).join('')}
+               </div>`
           }
         </div>
       </div>
@@ -1273,17 +1280,28 @@ const POModule = {
       }
     }
 
-    const subconEl = document.getElementById('m-subcon');
-    const subconName = subconEl ? subconEl.value : '';
+    let subconName = '';
     let subId = null;
 
     const isSub = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSubcontractor();
     const user = typeof ECO_Auth !== 'undefined' ? ECO_Auth.user() : null;
     if (isSub && user) {
       subId = user.subId;
-    } else if (subconName) {
-      const matchSub = Object.entries(window.subcontractorsData || {}).find(([_, s]) => s.name === subconName);
-      if (matchSub) subId = matchSub[0];
+      const sc = window.subcontractorsData ? window.subcontractorsData[user.subId] : null;
+      if (sc) subconName = sc.name;
+    } else {
+      const subconCbs = document.querySelectorAll('.po-subcon-cb');
+      const selectedSubcons = Array.from(subconCbs).filter(cb => cb.checked).map(cb => cb.value);
+      subconName = selectedSubcons.join(', ');
+      
+      if (selectedSubcons.length > 0) {
+        const subIds = [];
+        selectedSubcons.forEach(name => {
+          const matchSub = Object.entries(window.subcontractorsData || {}).find(([_, s]) => s.name === name);
+          if (matchSub) subIds.push(matchSub[0]);
+        });
+        subId = subIds.join(', ');
+      }
     }
 
     const pos = ECO_Storage._rawPOs();
@@ -2364,7 +2382,7 @@ const KhoModule = {
     const currentVal = poSelect.value;
     const pos = ECO_Storage.getPOs().filter(p => ['approved', 'ordered', 'shipping', 'partially_received'].includes(p.status));
     const filteredPOs = subconName 
-      ? pos.filter(p => p.subconName === subconName)
+      ? pos.filter(p => p.subconName && p.subconName.split(', ').map(x => x.trim()).includes(subconName))
       : pos;
     let html = `<option value="">-- Nhập ngoài PO --</option>`;
     html += filteredPOs.map(p => `<option value="${p.id}" ${String(p.id) === String(currentVal) ? 'selected' : ''}>${p.poNo} — ${p.supplier}</option>`).join('');
@@ -2381,12 +2399,16 @@ const KhoModule = {
     if (!poId) {
       tbody.innerHTML = '';
       if (addBtn) addBtn.style.display = 'block';
-      if (subconSelect) subconSelect.style.display = 'block';
-      if (subconDisplay) subconDisplay.style.display = 'none';
       if (subconSelect) {
+        subconSelect.style.display = 'block';
+        const subcons = Object.values(window.subcontractorsData || {});
+        let html = '<option value="">-- Chọn thầu phụ --</option>';
+        html += subcons.map(s => `<option value="${s.name}">${s.name}</option>`).join('');
+        subconSelect.innerHTML = html;
         subconSelect.value = '';
         this._filterPODropdown('');
       }
+      if (subconDisplay) subconDisplay.style.display = 'none';
       this._addKhoItemRow('in');
       return;
     }
@@ -2397,12 +2419,25 @@ const KhoModule = {
 
     const materials = ECO_Storage.getMaterials();
 
-    if (subconSelect) subconSelect.style.display = 'none';
-    if (subconDisplay) {
-      subconDisplay.style.display = 'flex';
-      subconDisplay.textContent = po.subconName || 'Chung';
+    const hasMultipleSubcons = po.subconName && po.subconName.includes(', ');
+    if (subconSelect) {
+      if (hasMultipleSubcons) {
+        subconSelect.style.display = 'block';
+        if (subconDisplay) subconDisplay.style.display = 'none';
+        const allowedSubs = po.subconName.split(', ').map(x => x.trim());
+        let html = '<option value="">-- Chọn thầu phụ nhận --</option>';
+        html += allowedSubs.map(name => `<option value="${name}">${name}</option>`).join('');
+        subconSelect.innerHTML = html;
+        subconSelect.value = '';
+      } else {
+        subconSelect.style.display = 'none';
+        if (subconDisplay) {
+          subconDisplay.style.display = 'flex';
+          subconDisplay.textContent = po.subconName || 'Chung';
+        }
+        subconSelect.value = po.subconName || '';
+      }
     }
-    if (subconSelect) subconSelect.value = po.subconName || '';
 
     tbody.innerHTML = '';
     if (addBtn) addBtn.style.display = 'none';
