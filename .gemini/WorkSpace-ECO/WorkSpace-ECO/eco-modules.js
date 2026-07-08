@@ -1055,8 +1055,9 @@ const POModule = {
 
         // 3. Nếu vẫn không khớp, chỉ khớp theo Mã nếu Mã đó không phải là các mã áp lực / đơn vị chung chung
         if (!matched && cleanCodeStr) {
-          const genericCodes = new Set(['pn5', 'pn6', 'pn9', 'pn10', 'pn125', 'pn16', 'pn20', 'pn25', 'm', 'kg', 'cai', 'co', 'te']);
-          if (!genericCodes.has(cleanCodeStr)) {
+          const genericCodes = new Set(['pn5', 'pn6', 'pn8', 'pn9', 'pn10', 'pn12', 'pn125', 'pn15', 'pn16', 'pn20', 'pn25', 'm', 'kg', 'cai', 'co', 'te']);
+          const isGeneric = genericCodes.has(cleanCodeStr) || /^pn\d+$/.test(cleanCodeStr);
+          if (!isGeneric) {
             matched = allMats.find(m => m.code && cleanText(m.code) === cleanCodeStr);
           }
         }
