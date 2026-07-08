@@ -1012,6 +1012,12 @@ const POModule = {
         return String(txt || '').normalize('NFC').toLowerCase().replace(/[\s\-\.\_\,]/g, '');
       }
 
+      function getPnRating(c, n) {
+        const str = `${c || ''} ${n || ''}`.toLowerCase().replace(/[\,\.]/g, '');
+        const match = str.match(/pn\s*(\d+)/);
+        return match ? match[1] : null;
+      }
+
       const newMatsToDeclare = [];
 
       for (let i = hdrIdx + 1; i < rows.length; i++) {
@@ -1040,15 +1046,27 @@ const POModule = {
 
         // 2. Nếu không khớp cả hai, tìm khớp theo Tên (vì mô tả vật tư thường rất cụ thể và chính xác)
         if (!matched && cleanNameStr) {
-          matched = allMats.find(m => m.name && cleanText(m.name) === cleanNameStr);
+          matched = allMats.find(m => {
+            if (!m.name || cleanText(m.name) !== cleanNameStr) return false;
+            const importPN = getPnRating(code, name);
+            const matPN = getPnRating(m.code, m.name);
+            if (importPN !== null && matPN !== null && importPN !== matPN) return false;
+            return true;
+          });
           
           // Thử tìm khớp tương đối theo tên (nhưng chặt chẽ hơn: độ dài ký tự khớp lớn)
           if (!matched) {
             matched = allMats.find(m => {
               if (!m.name) return false;
               const cleanMName = cleanText(m.name);
-              return (cleanMName.includes(cleanNameStr) && cleanNameStr.length > 4) ||
-                     (cleanNameStr.includes(cleanMName) && cleanMName.length > 4);
+              const nameMatch = (cleanMName.includes(cleanNameStr) && cleanNameStr.length > 4) ||
+                                (cleanNameStr.includes(cleanMName) && cleanMName.length > 4);
+              if (!nameMatch) return false;
+              
+              const importPN = getPnRating(code, name);
+              const matPN = getPnRating(m.code, m.name);
+              if (importPN !== null && matPN !== null && importPN !== matPN) return false;
+              return true;
             });
           }
         }
