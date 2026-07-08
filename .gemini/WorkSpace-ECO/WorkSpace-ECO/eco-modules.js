@@ -259,6 +259,7 @@ const ECO_MatLink = {
   receivedFor(boqItemId) { return this.receivedByBoq()[boqItemId] || 0; },
   // Chi tiết các vật tư & phiếu đóng góp vào KL Nhập của 1 hạng mục BOQ
   contributionsFor(boqItemId) {
+    const matBoq = this._matBoqMap();
     const byId = {};
     ECO_Storage.getMaterials().forEach(m => { byId[m.id] = m; });
     const rows = {};
@@ -266,7 +267,8 @@ const ECO_MatLink = {
       if (log.type !== 'in') return;
       (log.items || []).forEach(it => {
         const m = byId[it.matId];
-        if (!m || (m.boqItemId || null) !== boqItemId) return;
+        const bid = matBoq[it.matId];
+        if (!m || bid !== boqItemId) return;
         if (!rows[it.matId]) rows[it.matId] = { mat: m, qty: 0, logs: [] };
         rows[it.matId].qty += parseFloat(it.qty) || 0;
         rows[it.matId].logs.push({ date: log.date, poNo: log.poNo, qty: parseFloat(it.qty) || 0 });
@@ -1231,7 +1233,7 @@ const POModule = {
         items.push({
           matId: mat.id,
           qty,
-          variant: 'Tiêu chuẩn',
+          variant: row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn',
           name: mat.name,
           unit: mat.unit,
           area
@@ -1245,7 +1247,8 @@ const POModule = {
           const area = row.querySelector('.item-area')?.value || 'Chung';
           const mat = materials.find(m => m.id === matId);
           if (matId && qty > 0) {
-            items.push({ matId, qty, variant: 'Tiêu chuẩn', name: mat?.name, unit: mat?.unit, area });
+            const variant = row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn';
+            items.push({ matId, qty, variant, name: mat?.name, unit: mat?.unit, area });
           }
         } else {
           const areaSelect = row.querySelector('.item-area-select');
