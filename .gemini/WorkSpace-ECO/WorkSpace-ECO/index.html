@@ -269,7 +269,7 @@
         <text x="310" y="405" fill="rgba(0, 86, 255, 0.7)" font-family="monospace" font-weight="bold" font-size="11">BCH RICONS</text>
         
         <text x="80" y="225" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP ĐẤT PHAN</text>
-        <text x="135" y="525" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP ĐỈNH AN</text>
+        <text x="135" y="525" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP ĐỊNH AN</text>
         <text x="515" y="240" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP PHAN NGUYỄN</text>
         <text x="565" y="505" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP HÀN VIỆT</text>
         <text x="250" y="105" fill="rgba(227, 24, 55, 0.5)" font-family="monospace" font-size="10">NTP THUẬN THIÊN</text>
@@ -344,6 +344,10 @@
         <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('purchasing', this, 'bg-art-materials')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
           Đơn đặt hàng (PO)
+        </a></li>
+        <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('materials_area', this, 'bg-art-materials')">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><rect x="3" y="3" width="7" height="9"></rect><rect x="14" y="3" width="7" height="5"></rect><rect x="14" y="12" width="7" height="9"></rect><rect x="3" y="16" width="7" height="5"></rect></svg>
+          Vật tư theo Khu vực
         </a></li>
         <li><a href="javascript:void(0)" class="menu-item" onclick="switchTab('submittals', this, 'bg-art-submittals')">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 14px;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -492,6 +496,23 @@
           <div id="danh-muc-vat-tu-content">
             <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải danh mục vật tư...</div>
           </div>
+        </div>
+      </div>
+
+      <!-- ==================== VẬT TƯ THEO KHU VỰC TAB ==================== -->
+      <div id="materials_area" class="tab-content">
+        <div class="module-header">
+          <div class="module-title-plate"><i class="module-title-icon" data-lucide="layout-grid"></i><h2>Vật tư theo Khu vực</h2></div>
+          <div class="module-tab-coverflow" id="coverflow-materials-area">
+            <div class="coverflow-track">
+              <div class="coverflow-item active" onclick="MaterialsAreaModule.render()"><i data-lucide="layout-grid" style="width:16px;height:16px;"></i> Vật tư theo Khu vực thi công</div>
+            </div>
+          </div>
+          <button class="module-help-btn" onclick="openGuideModal('po')" title="Hướng dẫn sử dụng"><i data-lucide="circle-help" style="width:22px;height:22px;"></i></button>
+        </div>
+
+        <div id="materials-area-content" style="padding: 0;">
+          <div style="text-align:center; padding: 60px 0; color: var(--text-tertiary);">Đang tải chi tiết khu vực...</div>
         </div>
       </div>
       <!-- ==================== HỒ SƠ TRÌNH DUYỆT TAB ==================== -->
@@ -813,6 +834,7 @@
       if (tabId === 'boq' && typeof ECOBOQModule !== 'undefined') ECOBOQModule.render();
       if (tabId === 'org-chart' && typeof BCHModule !== 'undefined') BCHModule.render();
       if (tabId === 'schedule' && typeof TienDoModule !== 'undefined') TienDoModule.render();
+      if (tabId === 'materials_area' && typeof MaterialsAreaModule !== 'undefined') MaterialsAreaModule.render();
       if (tabId === 'materials') {
         const activeItem = document.querySelector('#coverflow-materials .coverflow-item.active');
         if (activeItem && activeItem.dataset.materialSection === 'kho') {
@@ -1188,7 +1210,7 @@
         ]
       },
       'dinh-an': {
-        name: 'ĐỈNH AN',
+        name: 'ĐỊNH AN',
         scope: 'Hệ thống Điện & Điện nhẹ - Tháp S2, Hầm B1, Landscape',
         system: 'Điện & Điện nhẹ',
         contact: 'Trần Thanh B',

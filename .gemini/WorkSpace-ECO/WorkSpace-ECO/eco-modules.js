@@ -24,6 +24,43 @@ function cleanPrefix(str) {
   return s;
 }
 
+function cleanPoNoToHeading(poNo) {
+  if (!poNo) return '—';
+  let s = String(poNo).trim();
+  s = s.replace(/^(ECO\s*HH1\s*[-–]?\s*PO\s*|ECO\s*HH1\s*[-–]?\s*|PO\s*)/i, '');
+  s = s.replace(/\s*[-–_]?\s*\d+\s*$/, '');
+  return s.trim() || poNo;
+}
+
+function renderAreaCheckboxes(currentAreaStr = '', isReadOnly = false) {
+  const allowedAreas = ['Hầm B2', 'Hầm B1', 'Hầm P1', 'Tháp S1', 'Tháp S2'];
+  const currentAreas = String(currentAreaStr || '').split(',').map(x => x.trim()).filter(Boolean);
+  
+  if (isReadOnly) {
+    return currentAreas.join(', ') || 'Chung';
+  }
+  
+  let html = `<div class="area-checkboxes-wrapper" style="display:flex; flex-direction:column; gap:4px; max-height:100px; overflow-y:auto; border:1px solid rgba(0,0,0,0.12); padding:6px; border-radius:6px; background:#fff; width:100%; box-sizing:border-box;">`;
+  allowedAreas.forEach(area => {
+    const isChecked = currentAreas.includes(area);
+    html += `
+      <label style="display:inline-flex; align-items:center; gap:6px; font-size:0.75rem; color:#0F172A; font-weight:normal; margin:0; cursor:pointer; user-select:none; text-transform:none;">
+        <input type="checkbox" class="area-cb" value="${area}" ${isChecked ? 'checked' : ''} style="width:14px; height:14px; cursor:pointer; accent-color:#0056FF;">
+        <span>${area}</span>
+      </label>
+    `;
+  });
+  html += `</div>`;
+  return html;
+}
+
+function getSelectedAreasFromRow(row) {
+  const cbs = row.querySelectorAll('.area-cb:checked');
+  if (cbs.length === 0) return 'Chung';
+  return Array.from(cbs).map(cb => cb.value).join(', ');
+}
+
+
 // ===== MEP SYSTEM MAPPING =====
 // Ánh xạ động từ ECO_SYSTEMS của BOQ ↔ system ID nội bộ.
 function systemLabelToIds(label) {
@@ -50,7 +87,8 @@ function systemLabelToIds(label) {
 // Setter ghi thẳng xuống DB qua ECO_Cache.set() — không cache local.
 const ECO_Storage = {
   _get(key) {
-    return (typeof ECO_Cache !== 'undefined' ? ECO_Cache.get(key) : null) || [];
+    if (typeof ECO_Cache === 'undefined') return null;
+    return ECO_Cache.get(key);
   },
   _set(key, val) {
     if (typeof ECO_Cache !== 'undefined') {
@@ -70,6 +108,10 @@ const ECO_Storage = {
     const pos = this._rawPOs();
     const logs = this.getInventoryLogs() || [];
     const materials = this.getMaterials() || [];
+    const suppliers = this._get('eco_suppliers') || [];
+    const supMap = {};
+    suppliers.forEach(s => { if (s && s.id) supMap[String(s.id)] = s.companyName; });
+
     const matMap = {};
     materials.forEach(m => { matMap[m.id] = m; });
     
@@ -86,12 +128,16 @@ const ECO_Storage = {
 
     return pos.map(p => {
       const pId = String(p.id);
+      const currentSupplierName = p.supplierId ? supMap[String(p.supplierId)] : null;
+      const supplierName = currentSupplierName || p.supplier || '—';
+
       const items = (p.items || []).map(item => {
         const v = item.variant || 'Tiêu chuẩn';
         const received = (recvMap[pId] && recvMap[pId][item.matId] && recvMap[pId][item.matId][v]) || 0;
         const mat = matMap[item.matId];
         return {
           ...item,
+          code: mat ? mat.code : (item.code || '—'),
           name: mat ? mat.name : item.name,
           unit: mat ? mat.unit : item.unit,
           receivedQty: received
@@ -113,7 +159,7 @@ const ECO_Storage = {
         }
       }
 
-      return { ...p, items, status: newStatus };
+      return { ...p, items, status: newStatus, supplier: supplierName };
     });
   },
   savePOs(pos) {
@@ -143,15 +189,21 @@ const ECO_Storage = {
   saveSuppliers(s) { return this._set('eco_suppliers', s); },
   getProgress() {
     const raw = this._get('eco_progress');
-    if (!raw || raw.length === 0) {
+    // Nếu đang tải (null), trả về mảng rỗng tạm thời nhưng KHÔNG ghi đè defaults
+    if (raw === null) return [];
+    
+    // Sử dụng cờ đánh dấu đã khởi tạo (eco_progress_seeded)
+    const isSeeded = localStorage.getItem('eco_progress_seeded');
+    if (!isSeeded && (!raw || raw.length === 0)) {
       const defaults = [
         { id: 1, code: 'SCH-MEP-001', system: 'Điện', subcontractor: 'ĐẤT PHAN', area: 'Khu A - Tầng 1 & 2', progress: 78, status: 'ON TRACK' },
         { id: 2, code: 'SCH-MEP-002', system: 'Phòng cháy Chữa cháy', subcontractor: 'THUẬN THIÊN', area: 'Toàn bộ Nhà xưởng chính', progress: 42, status: 'BỊ TRỄ' }
       ];
+      localStorage.setItem('eco_progress_seeded', 'true');
       this.saveProgress(defaults);
       return defaults;
     }
-    return raw;
+    return raw || [];
   },
   saveProgress(p) { return this._set('eco_progress', p); },
   getInventoryLogs() {
@@ -440,7 +492,11 @@ const POModule = {
   render() {
     const el = document.getElementById('po-content');
     if (!el) return;
-    el.innerHTML = this.currentTab === 'list' ? this._renderList() : this._renderSuppliers();
+    if (this.currentTab === 'list') {
+      el.innerHTML = this._renderList();
+    } else if (this.currentTab === 'suppliers') {
+      el.innerHTML = this._renderSuppliers();
+    }
     if (window.lucide && lucide.createIcons) lucide.createIcons();
     if (window.updateContentTableHeights) setTimeout(window.updateContentTableHeights, 0);
   },
@@ -462,7 +518,10 @@ const POModule = {
             </select>
             ${active ? `<button onclick="POModule._setSubconFilter('')" style="background:none;border:none;color:#E31837;cursor:pointer;font-size:0.8rem;font-weight:700;padding:0;" title="Xóa lọc">✕ Xóa lọc</button>` : ''}
           </div>
-          <button class="btn btn-outline btn-blue" data-perm="po:create" onclick="POModule.createPO()" style="font-size:0.85rem;padding:8px 18px;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block"></i> Tạo PO mới</button>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="POModule.exportAllPosToExcel()" style="font-size:0.85rem;padding:8px 18px;color:#10B981;border-color:#10B981;"><i data-lucide="file-up" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Xuất Excel</button>
+            <button class="btn btn-outline btn-blue" data-perm="po:create" onclick="POModule.createPO()" style="font-size:0.85rem;padding:8px 18px;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block"></i> Tạo PO mới</button>
+          </div>
         </div>
         <div class="table-container" style="margin:0;border-radius:0;">
           <table class="tech-table">
@@ -629,15 +688,16 @@ const POModule = {
                 <th style="padding:10px 12px;width:45px;text-align:center;">
                   <input type="checkbox" id="po-select-all" onchange="POModule._toggleSelectAll(this)" style="cursor:pointer;width:16px;height:16px;vertical-align:middle;" title="Chọn tất cả">
                 </th>
-                <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:140px;">Mã vật tư</th>
+                <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:120px;">Mã vật tư</th>
                 <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;">Tên vật tư (quy cách chi tiết)</th>
-                <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:220px;">Khu vực thi công</th>
+                <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:180px;">Khu vực thi công</th>
+                <th style="padding:10px 12px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:150px;">Chi tiết</th>
                 <th style="padding:10px 12px;width:110px;text-align:right;font-size:0.8rem;font-weight:700;color:#475569;">Số lượng</th>
                 <th style="padding:10px 12px;width:65px;text-align:center;font-size:0.8rem;font-weight:700;color:#475569;">ĐVT</th>
               </tr>
             </thead>
             <tbody id="po-items-body">
-              <tr><td colspan="6" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Vui lòng chọn Nhà cung cấp ở trên để tải danh sách vật tư.</td></tr>
+              <tr><td colspan="7" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Vui lòng chọn Nhà cung cấp ở trên để tải danh sách vật tư.</td></tr>
             </tbody>
           </table>
         </div>
@@ -681,7 +741,7 @@ const POModule = {
     const boq = (typeof ECO_BOQStorage !== 'undefined') ? ECO_BOQStorage.getOrSeedBOQ() : [];
 
     if (materials.length === 0 && (!prefilledItems || prefilledItems.length === 0)) {
-      tbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Nhà cung cấp này chưa được gán vật tư nào. Vui lòng gán vật tư trong phần cấu hình Nhà cung cấp.</td></tr>`;
+      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Nhà cung cấp này chưa được gán vật tư nào. Vui lòng gán vật tư trong phần cấu hình Nhà cung cấp.</td></tr>`;
       return;
     }
 
@@ -711,20 +771,26 @@ const POModule = {
 
       const tr = document.createElement('tr');
       tr.className = 'po-item-row supplier-mat-row';
+      const areaHtml = renderAreaCheckboxes(areaStr, false);
+      const detailStr = fill ? (fill.detail || '') : '';
       tr.innerHTML = `
-        <td style="padding:10px 12px;text-align:center;">
+        <td style="padding:10px 12px;text-align:center;vertical-align:middle;">
           <input type="checkbox" class="po-item-check" onchange="POModule._toggleRowActive(this)" style="cursor:pointer;width:16px;height:16px;" ${isChecked ? 'checked' : ''}>
         </td>
-        <td style="padding:10px 12px;font-weight:700;color:#0056FF;font-size:0.85rem;">${m.code || '—'}</td>
-        <td style="padding:10px 12px;font-weight:600;font-size:0.85rem;">${m.name}</td>
-        <td style="padding:10px 12px;font-size:0.82rem;color:#475569;">${areaStr}</td>
-        <td style="padding:10px 12px;">
+        <td style="padding:10px 12px;font-weight:700;color:#0056FF;font-size:0.85rem;vertical-align:middle;">${m.code || '—'}</td>
+        <td style="padding:10px 12px;font-weight:600;font-size:0.85rem;vertical-align:middle;">${m.name}</td>
+        <td style="padding:10px 12px;vertical-align:middle;">
+          ${areaHtml}
+        </td>
+        <td style="padding:10px 12px;vertical-align:middle;">
+          <input type="text" class="eco-input item-detail" value="${detailStr}" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;box-shadow:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;" placeholder="Chi tiết...">
+        </td>
+        <td style="padding:10px 12px;vertical-align:middle;">
           <input type="number" class="eco-input item-qty" value="${qtyVal}" min="0" step="0.01" ${isChecked ? '' : 'disabled'} style="font-size:0.85rem;text-align:right;margin:0;padding:4px 8px;width:100%;box-shadow:none;">
           <input type="hidden" class="item-mat-id" value="${m.id}">
-          <input type="hidden" class="item-area" value="${areaStr}">
           <input type="hidden" class="item-var" value="${fill ? fill.variant : 'Tiêu chuẩn'}">
         </td>
-        <td style="padding:10px 12px;text-align:center;font-size:0.85rem;color:#475569;">${m.unit || '—'}</td>
+        <td style="padding:10px 12px;text-align:center;font-size:0.85rem;color:#475569;vertical-align:middle;">${m.unit || '—'}</td>
       `;
       tbody.appendChild(tr);
     });
@@ -736,23 +802,27 @@ const POModule = {
           const allMats = ECO_Storage.getMaterials();
           const tr = document.createElement('tr');
           tr.className = 'po-item-row custom-mat-row';
+          const areaHtml = renderAreaCheckboxes(item.area || 'Chung', false);
+          const detailStr = item.detail || '';
           tr.innerHTML = `
-            <td style="padding:8px 6px;text-align:center;">—</td>
-            <td style="padding:8px 6px;" colspan="2">
-              <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;" onchange="POModule.updateItemArea(this)">
+            <td style="padding:8px 6px;text-align:center;vertical-align:middle;">—</td>
+            <td style="padding:8px 6px;vertical-align:middle;" colspan="2">
+              <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;">
                 ${allMats.map(m => `<option value="${m.id}" data-code="${m.code}" data-name="${m.name}" ${m.id === item.matId ? 'selected' : ''}>[${m.code}] ${m.name} (${m.unit})</option>`).join('')}
               </select>
             </td>
-            <td style="padding:8px 6px;">
-              <select class="eco-select item-area-select" style="font-size:0.85rem;width:100%;">
-                <option value="${item.matId}">${item.area || 'Chung'}</option>
-              </select>
+            <td style="padding:8px 6px;vertical-align:middle;">
+              ${areaHtml}
             </td>
-            <td style="padding:8px 6px;">
+            <td style="padding:8px 6px;vertical-align:middle;">
+              <input type="text" class="eco-input item-detail" value="${detailStr}" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;box-shadow:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;" placeholder="Chi tiết...">
+            </td>
+            <td style="padding:8px 6px;vertical-align:middle;">
               <input type="number" class="eco-input item-qty" value="${item.qty}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;margin:0;padding:4px 8px;width:100%;">
               <input type="hidden" class="item-var" value="${item.variant || 'Tiêu chuẩn'}">
+              <input type="hidden" class="item-mat-id" value="${item.matId}">
             </td>
-            <td style="padding:8px 6px;text-align:center;">
+            <td style="padding:8px 6px;text-align:center;vertical-align:middle;">
               <button onclick="this.closest('tr').remove()" style="background:none;border:none;color:#E31837;font-size:1.3rem;cursor:pointer;line-height:1;">&times;</button>
             </td>
           `;
@@ -802,24 +872,26 @@ const POModule = {
 
     const tr = document.createElement('tr');
     tr.className = 'po-item-row custom-mat-row';
+    const areaHtml = renderAreaCheckboxes('Chung', false);
     tr.innerHTML = `
-      <td style="padding:8px 6px;text-align:center;">—</td>
-      <td style="padding:8px 6px;" colspan="2">
-        <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;" onchange="POModule.updateItemArea(this)">
+      <td style="padding:8px 6px;text-align:center;vertical-align:middle;">—</td>
+      <td style="padding:8px 6px;vertical-align:middle;" colspan="2">
+        <select class="eco-select item-mat" style="font-size:0.85rem;width:100%;">
           <option value="">-- Chọn vật tư --</option>
           ${allMats.map(m => `<option value="${m.id}" data-code="${m.code}" data-name="${m.name}">[${m.code}] ${m.name} (${m.unit})</option>`).join('')}
         </select>
       </td>
-      <td style="padding:8px 6px;">
-        <select class="eco-select item-area-select" style="font-size:0.85rem;width:100%;">
-          <option value="">—</option>
-        </select>
+      <td style="padding:8px 6px;vertical-align:middle;">
+        ${areaHtml}
       </td>
-      <td style="padding:8px 6px;">
+      <td style="padding:8px 6px;vertical-align:middle;">
+        <input type="text" class="eco-input item-detail" value="" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;box-shadow:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;" placeholder="Chi tiết...">
+      </td>
+      <td style="padding:8px 6px;vertical-align:middle;">
         <input type="number" class="eco-input item-qty" value="1" min="0" step="0.01" style="font-size:0.85rem;text-align:right;margin:0;padding:4px 8px;width:100%;">
         <input type="hidden" class="item-var" value="Tiêu chuẩn">
       </td>
-      <td style="padding:8px 6px;text-align:center;">
+      <td style="padding:8px 6px;text-align:center;vertical-align:middle;">
         <button onclick="this.closest('tr').remove()" style="background:none;border:none;color:#E31837;font-size:1.3rem;cursor:pointer;line-height:1;">&times;</button>
       </td>
     `;
@@ -836,6 +908,7 @@ const POModule = {
 
     const tr = document.createElement('tr');
     tr.className = 'po-item-row manual-typed-row';
+    const areaHtml = renderAreaCheckboxes('Chung', false);
     tr.innerHTML = `
       <td style="padding:10px 12px;text-align:center;vertical-align:middle;">
         <span style="font-size:0.7rem;background:#10B981;color:#fff;border-radius:4px;padding:2px 5px;font-weight:700;white-space:nowrap;">Tự nhập</span>
@@ -847,7 +920,10 @@ const POModule = {
         <input type="text" class="eco-input manual-name" placeholder="Nhập tên vật tư & quy cách chi tiết bằng tay *" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;font-weight:600;box-shadow:none;">
       </td>
       <td style="padding:8px 6px;vertical-align:middle;">
-        <input type="text" class="eco-input manual-area" placeholder="Khu vực thi công" value="Chung" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;box-shadow:none;">
+        ${areaHtml}
+      </td>
+      <td style="padding:8px 6px;vertical-align:middle;">
+        <input type="text" class="eco-input item-detail" value="" style="font-size:0.82rem;margin:0;padding:4px 8px;width:100%;box-shadow:none;border:1px solid rgba(0,0,0,0.15);border-radius:6px;box-sizing:border-box;" placeholder="Chi tiết...">
       </td>
       <td style="padding:8px 6px;vertical-align:middle;">
         <input type="number" class="eco-input item-qty" value="1" min="0" step="0.01" style="font-size:0.82rem;text-align:right;margin:0;padding:4px 8px;width:100%;box-shadow:none;">
@@ -1203,6 +1279,319 @@ const POModule = {
     }
   },
 
+  async exportAllPosToExcel() {
+    ECO_UI.toast('Đang tạo file Excel PO...', 'info');
+    try {
+      await _loadScript('https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js');
+      const wb = new ExcelJS.Workbook();
+      wb.creator = 'ECO Workspace'; wb.created = new Date();
+      
+      const allPos = ECO_Storage.getPOs();
+      const today = new Date().toLocaleDateString('vi-VN');
+      const logs = ECO_Storage.getInventoryLogs() || [];
+      
+      const BG_HEADER = 'FF0033A0', FG_WHITE = 'FFFFFFFF';
+      const BG_DATA_ODD = 'FFF8FAFF';
+      const BG_SCOPE = 'FFDBEAFE';
+      const border = { style: 'thin', color: { argb: 'FFD1D9E6' } };
+      const bd = () => ({ top: border, left: border, bottom: border, right: border });
+      const numFmt = '#,##0.00';
+
+      const getReceivingDatesStr = (poNo, poId, matId) => {
+        const matched = logs.filter(l => 
+          l.type === 'in' && 
+          (l.poNo === poNo || String(l.poId) === String(poId)) &&
+          (l.items || []).some(li => String(li.matId) === String(matId))
+        );
+        if (matched.length === 0) return '—';
+        return matched.map(l => {
+          const logItem = l.items.find(li => String(li.matId) === String(matId));
+          const qtyStr = logItem ? ` (SL: ${logItem.qty})` : '';
+          const dateStr = l.date ? new Date(l.date).toLocaleDateString('vi-VN') : '';
+          return dateStr ? `${dateStr}${qtyStr}` : '';
+        }).filter(Boolean).join(', ') || '—';
+      };
+
+      const getPoReceivingDatesStr = (poNo) => {
+        const matched = logs.filter(l => 
+          l.type === 'in' && l.poNo === poNo
+        );
+        if (matched.length === 0) return '—';
+        return matched.map(l => {
+          const totalQty = (l.items || []).reduce((sum, li) => sum + (parseFloat(li.qty) || 0), 0);
+          const qtyStr = totalQty > 0 ? ` (SL: ${totalQty})` : '';
+          const dateStr = l.date ? new Date(l.date).toLocaleDateString('vi-VN') : '';
+          return dateStr ? `${dateStr}${qtyStr}` : '';
+        }).filter(Boolean).join(', ') || '—';
+      };
+
+
+      // ────────────────────────────────────────────────────────
+      // Sheet 1: Tổng quan Đơn hàng (PO Summary)
+      // ────────────────────────────────────────────────────────
+      const wsSum = wb.addWorksheet('Danh sách Đơn hàng');
+      wsSum.mergeCells('A1:H1');
+      Object.assign(wsSum.getCell('A1'), {
+        value: 'DANH SÁCH ĐƠN ĐẶT HÀNG (PO SUMMARY)',
+        font: { name: 'Arial', size: 13, bold: true, color: { argb: FG_WHITE } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      wsSum.getRow(1).height = 32;
+
+      wsSum.mergeCells('A2:H2');
+      wsSum.getCell('A2').value = 'Dự án: ECO Long An  |  Ngày xuất: ' + today;
+      wsSum.getCell('A2').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF94A3B8' } };
+      wsSum.getCell('A2').alignment = { horizontal: 'center' };
+      wsSum.addRow([]);
+
+      const hRowSum = wsSum.addRow([
+        'Số PO', 'Ngày tạo', 'Nhà cung cấp', 'Hệ thống MEP', 'Nhà thầu phụ', 'Trạng thái', 'Số loại vật tư', 'Ghi chú'
+      ]);
+      hRowSum.height = 22;
+      wsSum.columns = [
+        { width: 22 }, { width: 14 }, { width: 32 }, { width: 20 }, { width: 20 }, { width: 16 }, { width: 15 }, { width: 35 }
+      ];
+      hRowSum.eachCell(cell => {
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: FG_WHITE } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } },
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = bd();
+      });
+
+      let sumIdx = 0;
+      allPos.forEach(p => {
+        const row = wsSum.addRow([
+          p.poNo || '',
+          p.date ? new Date(p.date).toLocaleDateString('vi-VN') : '',
+          p.supplier || '',
+          p.system || '',
+          p.subconName || 'Chung',
+          p.status || 'pending',
+          p.items ? p.items.length : 0,
+          p.notes || ''
+        ]);
+        const isOdd = (sumIdx++ % 2 === 0);
+        const rowBg = isOdd ? BG_DATA_ODD : 'FFFFFFFF';
+        row.eachCell((c, col) => {
+          c.border = bd();
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+          c.font = { name: 'Arial', size: 9 };
+          if (col === 1) c.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF0056FF' } };
+          if (col === 2 || col === 6 || col === 7) c.alignment = { horizontal: 'center' };
+        });
+      });
+
+      // ────────────────────────────────────────────────────────
+      // Sheet 2: Chi tiết vật tư PO (PO Details)
+      // ────────────────────────────────────────────────────────
+      const wsDet = wb.addWorksheet('Chi tiết Vật tư PO');
+      wsDet.mergeCells('A1:N1');
+      Object.assign(wsDet.getCell('A1'), {
+        value: 'CHI TIẾT VẬT TƯ ĐẶT HÀNG QUA CÁC ĐƠN HÀNG (PO DETAILS)',
+        font: { name: 'Arial', size: 13, bold: true, color: { argb: FG_WHITE } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      wsDet.getRow(1).height = 32;
+
+      wsDet.mergeCells('A2:N2');
+      wsDet.getCell('A2').value = 'Dự án: ECO Long An  |  Ngày xuất: ' + today;
+      wsDet.getCell('A2').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF94A3B8' } };
+      wsDet.getCell('A2').alignment = { horizontal: 'center' };
+      wsDet.addRow([]);
+
+      const hRowDet = wsDet.addRow([
+        'Số PO', 'Ngày tạo', 'Nhà cung cấp', 'Hệ thống MEP', 'Nhà thầu phụ', 'Trạng thái PO',
+        'Mã vật tư', 'Tên vật tư (quy cách)', 'ĐVT', 'Số lượng đặt', 'Số lượng đã nhập', 'Ngày nhập kho', 'Khu vực thi công', 'Chi tiết'
+      ]);
+      hRowDet.height = 22;
+      wsDet.columns = [
+        { width: 22 }, { width: 14 }, { width: 32 }, { width: 20 }, { width: 20 }, { width: 16 },
+        { width: 16 }, { width: 38 }, { width: 10 }, { width: 15 }, { width: 15 }, { width: 28 }, { width: 24 }, { width: 24 }
+      ];
+      hRowDet.eachCell(cell => {
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: FG_WHITE } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = bd();
+      });
+
+      let detIdx = 0;
+      allPos.forEach(p => {
+        (p.items || []).forEach(it => {
+          const row = wsDet.addRow([
+            p.poNo || '',
+            p.date ? new Date(p.date).toLocaleDateString('vi-VN') : '',
+            p.supplier || '',
+            p.system || '',
+            p.subconName || 'Chung',
+            p.status || 'pending',
+            it.code || '—',
+            it.name || '—',
+            it.unit || '—',
+            parseFloat(it.qty) || 0,
+            parseFloat(it.receivedQty) || 0,
+            getReceivingDatesStr(p.poNo, p.id, it.matId),
+            it.area || 'Chung',
+            it.detail || '—'
+          ]);
+          const isOdd = (detIdx++ % 2 === 0);
+          const rowBg = isOdd ? BG_DATA_ODD : 'FFFFFFFF';
+          row.eachCell((c, col) => {
+            c.border = bd();
+            c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+            c.font = { name: 'Arial', size: 9 };
+            if (col === 1) c.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF0056FF' } };
+            if (col === 2 || col === 6 || col === 9) c.alignment = { horizontal: 'center' };
+            if (col === 10 || col === 11) {
+              c.numFmt = numFmt;
+              c.alignment = { horizontal: 'right' };
+            }
+          });
+        });
+      });
+
+      // ────────────────────────────────────────────────────────
+      // Sheet 3: Chi tiết theo Khu vực (Details by Area)
+      // ────────────────────────────────────────────────────────
+      const wsArea = wb.addWorksheet('Chi tiết theo Khu vực');
+      wsArea.mergeCells('A1:L1');
+      Object.assign(wsArea.getCell('A1'), {
+        value: 'CHI TIẾT VẬT TƯ ĐẶT HÀNG THEO KHU VỰC THI CÔNG',
+        font: { name: 'Arial', size: 13, bold: true, color: { argb: FG_WHITE } },
+        fill: { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } },
+        alignment: { horizontal: 'center', vertical: 'middle' },
+      });
+      wsArea.getRow(1).height = 32;
+
+      wsArea.mergeCells('A2:L2');
+      wsArea.getCell('A2').value = 'Dự án: ECO Long An  |  Ngày xuất: ' + today;
+      wsArea.getCell('A2').font = { name: 'Arial', size: 9, italic: true, color: { argb: 'FF94A3B8' } };
+      wsArea.getCell('A2').alignment = { horizontal: 'center' };
+      wsArea.addRow([]);
+
+      const hRowArea = wsArea.addRow([
+        'Khu vực thi công', 'Chi tiết', 'Mã vật tư', 'Tên vật tư (quy cách)', 'ĐVT', 'Tổng số lượng đặt', 'Tổng số lượng đã nhập', 'Ngày nhập kho', 'Hệ thống MEP', 'Nhà thầu phụ', 'Số PO', 'Nhà cung cấp'
+      ]);
+      hRowArea.height = 22;
+      wsArea.columns = [
+        { width: 28 }, { width: 24 }, { width: 16 }, { width: 38 }, { width: 10 }, { width: 15 }, { width: 15 }, { width: 28 }, { width: 20 }, { width: 20 }, { width: 22 }, { width: 32 }
+      ];
+      hRowArea.eachCell(cell => {
+        cell.font = { name: 'Arial', size: 9, bold: true, color: { argb: FG_WHITE } };
+        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: BG_HEADER } };
+        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+        cell.border = bd();
+      });
+
+      // Gom nhóm dữ liệu theo khu vực
+      const areaItems = [];
+      const materials = ECO_Storage.getMaterials() || [];
+      const matMap = {};
+      materials.forEach(m => { matMap[m.id] = m; });
+
+      allPos.forEach(p => {
+        (p.items || []).forEach(it => {
+          const areaName = (it.area || 'Chung').trim();
+          const mat = matMap[it.matId];
+          areaItems.push({
+            area: areaName,
+            detail: it.detail || '—',
+            code: (mat && mat.code) || '—',
+            name: it.name || (mat && mat.name) || '—',
+            unit: it.unit || (mat && mat.unit) || '—',
+            qty: parseFloat(it.qty) || 0,
+            receivedQty: parseFloat(it.receivedQty) || 0,
+            system: p.system || '',
+            subconName: p.subconName || 'Chung',
+            poNo: p.poNo || '',
+            supplier: p.supplier || '',
+            matId: it.matId
+          });
+        });
+      });
+
+      // Sắp xếp theo tên khu vực và mã vật tư
+      areaItems.sort((a, b) => {
+        const areaCompare = a.area.localeCompare(b.area, 'vi', { sensitivity: 'base' });
+        if (areaCompare !== 0) return areaCompare;
+        return a.code.localeCompare(b.code, 'vi', { numeric: true });
+      });
+
+      // Render dữ liệu vào sheet 3
+      let areaIdx = 0;
+      const startRowIndex = 5;
+      
+      areaItems.forEach((item) => {
+        const row = wsArea.addRow([
+          item.area,
+          item.detail,
+          item.code,
+          item.name,
+          item.unit,
+          item.qty,
+          item.receivedQty,
+          getReceivingDatesStr(item.poNo, null, item.matId),
+          item.system,
+          item.subconName,
+          item.poNo,
+          item.supplier
+        ]);
+        
+        const isOdd = (areaIdx++ % 2 === 0);
+        const rowBg = isOdd ? BG_DATA_ODD : 'FFFFFFFF';
+        row.eachCell((c, col) => {
+          c.border = bd();
+          c.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBg } };
+          c.font = { name: 'Arial', size: 9 };
+          if (col === 1) c.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF0033A0' } };
+          if (col === 10) c.font = { name: 'Arial', size: 9, bold: true, color: { argb: 'FF0056FF' } };
+          if (col === 4) c.alignment = { horizontal: 'center' };
+          if (col === 5 || col === 6) {
+            c.numFmt = numFmt;
+            c.alignment = { horizontal: 'right' };
+          }
+        });
+      });
+
+
+      // Tự động gộp các ô khu vực giống nhau ở cột A
+      let currentArea = '';
+      let mergeStartRow = startRowIndex;
+      for (let i = startRowIndex; i <= wsArea.rowCount; i++) {
+        const areaVal = wsArea.getCell(`A${i}`).value;
+        if (areaVal !== currentArea || i === wsArea.rowCount) {
+          const endRow = (i === wsArea.rowCount && areaVal === currentArea) ? i : i - 1;
+          if (endRow > mergeStartRow) {
+            wsArea.mergeCells(`A${mergeStartRow}:A${endRow}`);
+            wsArea.getCell(`A${mergeStartRow}`).alignment = { vertical: 'middle', horizontal: 'left', wrapText: true };
+          }
+          currentArea = areaVal;
+          mergeStartRow = i;
+        }
+      }
+
+      wsSum.views = [{ state: 'frozen', ySplit: 4 }];
+      wsDet.views = [{ state: 'frozen', ySplit: 4 }];
+      wsArea.views = [{ state: 'frozen', ySplit: 4 }];
+
+      const buf = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buf], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'Danh_Sach_PO_Theo_Khu_Vuc_' + new Date().toISOString().slice(0, 10) + '.xlsx';
+      document.body.appendChild(a); a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+      ECO_UI.toast('Đã xuất toàn bộ dữ liệu PO thành công!', 'success');
+    } catch (err) {
+      console.error(err);
+      ECO_UI.toast('Lỗi xuất Excel PO: ' + err.message, 'error');
+    }
+  },
+
   async _savePO(editId = null) {
     const poNo = document.getElementById('m-poNo').value.trim();
     const supplierId = document.getElementById('m-supplier').value;
@@ -1219,17 +1608,18 @@ const POModule = {
 
     const rows = Array.from(document.querySelectorAll('.po-item-row'));
     for (const row of rows) {
+      const area = getSelectedAreasFromRow(row);
+      const detail = (row.querySelector('.item-detail')?.value || '').trim();
+
       if (row.classList.contains('manual-typed-row')) {
         const code = (row.querySelector('.manual-code')?.value || '').trim();
         const name = (row.querySelector('.manual-name')?.value || '').trim();
-        const area = (row.querySelector('.manual-area')?.value || '').trim() || 'Chung';
         const qty = parseFloat(row.querySelector('.item-qty')?.value) || 0;
         const unit = (row.querySelector('.manual-unit')?.value || '').trim() || 'cái';
 
         if (!name) continue;
         if (qty <= 0) continue;
 
-        // Tìm xem vật tư đã tồn tại trong danh mục chưa (tránh tạo trùng)
         let mat = materials.find(m => 
           (code && String(m.code).toLowerCase() === code.toLowerCase()) || 
           (String(m.name).toLowerCase() === name.toLowerCase())
@@ -1243,7 +1633,7 @@ const POModule = {
             name: name,
             unit: unit,
             system: system,
-            boqItemId: null // Không liên kết BOQ gốc
+            boqItemId: null
           };
           newMatsToDeclare.push(newMat);
           mat = newMat;
@@ -1255,7 +1645,8 @@ const POModule = {
           variant: row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn',
           name: mat.name,
           unit: mat.unit,
-          area
+          area,
+          detail
         });
       } else {
         const check = row.querySelector('.po-item-check');
@@ -1263,21 +1654,19 @@ const POModule = {
           if (!check.checked) continue;
           const matId = parseInt(row.querySelector('.item-mat-id')?.value || '0');
           const qty = parseFloat(row.querySelector('.item-qty')?.value || '0') || 0;
-          const area = row.querySelector('.item-area')?.value || 'Chung';
           const mat = materials.find(m => m.id === matId);
           if (matId && qty > 0) {
             const variant = row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn';
-            items.push({ matId, qty, variant, name: mat?.name, unit: mat?.unit, area });
+            items.push({ matId, qty, variant, name: mat?.name, unit: mat?.unit, area, detail });
           }
         } else {
-          const areaSelect = row.querySelector('.item-area-select');
-          const matId = parseInt(areaSelect?.value) || parseInt(row.querySelector('.item-mat')?.value || '0');
-          const qty = parseFloat(row.querySelector('.item-qty').value) || 0;
-          const variant = row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn';
-          const area = areaSelect?.options[areaSelect.selectedIndex]?.textContent.trim() || 'Chung';
+          const matSelect = row.querySelector('.item-mat');
+          const matId = parseInt(matSelect?.value || row.querySelector('.item-mat-id')?.value || '0');
+          const qty = parseFloat(row.querySelector('.item-qty')?.value || '0') || 0;
           if (matId && qty > 0) {
             const mat = materials.find(m => m.id === matId);
-            items.push({ matId, qty, variant, name: mat?.name, unit: mat?.unit, area });
+            const variant = row.querySelector('.item-var')?.value?.trim() || 'Tiêu chuẩn';
+            items.push({ matId, qty, variant, name: mat?.name, unit: mat?.unit, area, detail });
           }
         }
       }
@@ -1603,7 +1992,8 @@ const POModule = {
           <thead style="background:rgba(0,86,255,0.06);">
             <tr>
               <th style="padding:10px 14px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;">Vật tư</th>
-              <th style="padding:10px 14px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:240px;">Khu vực thi công</th>
+              <th style="padding:10px 14px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:180px;">Khu vực thi công</th>
+              <th style="padding:10px 14px;text-align:left;font-size:0.8rem;font-weight:700;color:#475569;width:180px;">Chi tiết</th>
               <th style="padding:10px 14px;width:120px;font-size:0.8rem;font-weight:700;color:#475569;">Quy cách</th>
               <th style="padding:10px 14px;width:100px;text-align:right;font-size:0.8rem;font-weight:700;color:#475569;">SL đặt</th>
               <th style="padding:10px 14px;width:110px;text-align:right;font-size:0.8rem;font-weight:700;color:#475569;">Đã nhập kho</th>
@@ -1614,6 +2004,7 @@ const POModule = {
               <tr style="border-top:1px solid rgba(0,0,0,0.06);">
                 <td style="padding:10px 14px;font-weight:600;">${item.name || '—'}</td>
                 <td style="padding:10px 14px;font-size:0.85rem;color:#475569;">${item.area || 'Chung'}</td>
+                <td style="padding:10px 14px;font-size:0.85rem;color:#475569;">${item.detail || '—'}</td>
                 <td style="padding:10px 14px;font-size:0.85rem;color:#475569;">${item.variant || 'Tiêu chuẩn'}</td>
                 <td style="padding:10px 14px;text-align:right;font-weight:700;">${ECO_UI.fmtNum(item.qty, 2)} ${item.unit || ''}</td>
                 <td style="padding:10px 14px;text-align:right;font-weight:700;color:${(item.receivedQty || 0) >= (item.qty || 0) ? '#15803D' : '#0056FF'};">${ECO_UI.fmtNum(item.receivedQty || 0, 2)} ${item.unit || ''}</td>
@@ -2096,9 +2487,18 @@ const KhoModule = {
 
   _calcStock() {
     const stock = { "Tất cả": {} };
+    const subcons = Object.values(window.subcontractorsData || {});
+    const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    
     ECO_Storage.getInventoryLogs().forEach(log => {
       const sign = log.type === 'in' ? 1 : -1;
-      const subcon = log.subconName || 'Chung';
+      let subcon = log.subconName || 'Chung';
+      
+      if (subcon !== 'Chung') {
+        const matched = subcons.find(s => norm(s.name) === norm(subcon));
+        if (matched) subcon = matched.name;
+      }
+      
       if (!stock[subcon]) stock[subcon] = {};
       
       (log.items || []).forEach(item => {
@@ -2239,7 +2639,9 @@ const KhoModule = {
       if (subconFilter === 'Chung') {
         filtered = filtered.filter(l => !l.subconName || l.subconName === 'Chung');
       } else {
-        filtered = filtered.filter(l => l.subconName === subconFilter);
+        const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+        const normFilter = norm(subconFilter);
+        filtered = filtered.filter(l => l.subconName && norm(l.subconName) === normFilter);
       }
     }
 
@@ -2390,7 +2792,10 @@ const KhoModule = {
             <tbody id="kho-items-body"></tbody>
           </table>
         </div>
-        <button id="add-kho-item-btn" onclick="KhoModule._addKhoItemRow('${type}')" style="margin-top:10px;background:none;border:1px dashed rgba(0,86,255,0.3);border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#0056FF;cursor:pointer;width:100%;font-weight:600;font-family:inherit;">+ Thêm vật tư</button>
+        <div style="display:flex;gap:10px;margin-top:10px;">
+          <button id="add-kho-item-btn" onclick="KhoModule._addKhoItemRow('${type}')" style="background:none;border:1px dashed rgba(0,86,255,0.3);border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#0056FF;cursor:pointer;width:100%;font-weight:600;font-family:inherit;">+ Thêm vật tư</button>
+          <button id="fill-all-kho-qty-btn" onclick="KhoModule._fillAllRemaining()" style="display:none;background:none;border:1px dashed #10B981;border-radius:8px;padding:8px 16px;font-size:0.85rem;color:#10B981;cursor:pointer;width:100%;font-weight:600;font-family:inherit;">+ Nhận toàn bộ lượng còn lại</button>
+        </div>
       </div>`,
       `<button onclick="ECO_UI.closeModal()" class="btn btn-outline" style="padding:9px 20px;">Hủy</button>
        <button onclick="KhoModule._saveLog('${type}')" class="btn btn-primary" style="padding:9px 20px;">${type === 'in' ? 'Nhập kho' : 'Xuất kho'}</button>`
@@ -2415,12 +2820,14 @@ const KhoModule = {
     const tbody = document.getElementById('kho-items-body');
     if (!tbody) return;
     const addBtn = document.getElementById('add-kho-item-btn');
+    const fillAllBtn = document.getElementById('fill-all-kho-qty-btn');
     const subconSelect = document.getElementById('k-subcon');
     const subconDisplay = document.getElementById('k-subcon-display');
 
     if (!poId) {
       tbody.innerHTML = '';
       if (addBtn) addBtn.style.display = 'block';
+      if (fillAllBtn) fillAllBtn.style.display = 'none';
       if (subconSelect) {
         subconSelect.style.display = 'block';
         const subcons = Object.values(window.subcontractorsData || {});
@@ -2463,6 +2870,7 @@ const KhoModule = {
 
     tbody.innerHTML = '';
     if (addBtn) addBtn.style.display = 'none';
+    if (fillAllBtn) fillAllBtn.style.display = 'block';
 
     (po.items || []).forEach(item => {
       const remaining = Math.max(0, (item.qty || 0) - (item.receivedQty || 0));
@@ -2486,10 +2894,21 @@ const KhoModule = {
           </div>
         </td>
         <td style="padding:8px 6px;"><input type="text" class="eco-input kho-var" value="${item.variant || 'Tiêu chuẩn'}" readonly style="font-size:0.85rem;background:#F1F5F9;color:#475569;"></td>
-        <td style="padding:8px 6px;"><input type="number" class="eco-input kho-qty" value="${remaining}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;font-weight:700;color:#0056FF;"></td>
+        <td style="padding:8px 6px;position:relative;">
+          <input type="number" class="eco-input kho-qty" placeholder="${remaining}" min="0" step="0.01" style="font-size:0.85rem;text-align:right;font-weight:700;color:#0056FF;padding-right:32px;">
+          ${remaining > 0 ? `<span onclick="this.previousElementSibling.value='${remaining}'" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);font-size:0.72rem;color:#0056FF;cursor:pointer;font-weight:700;user-select:none;" title="Nhập toàn bộ lượng còn lại">all</span>` : ''}
+        </td>
         <td style="padding:8px 6px;text-align:center;"><button onclick="this.closest('tr').remove()" style="background:none;border:none;color:#E31837;font-size:1.3rem;cursor:pointer;line-height:1;">&times;</button></td>
       `;
       tbody.appendChild(tr);
+    });
+  },
+  _fillAllRemaining() {
+    document.querySelectorAll('.kho-item-row').forEach(row => {
+      const input = row.querySelector('.eco-input.kho-qty');
+      if (input && !input.value) {
+        input.value = input.placeholder || '';
+      }
     });
   },
   _addKhoItemRow(type) {
@@ -2570,20 +2989,25 @@ const KhoModule = {
   _getMatIdsForSubcon(subconName) {
     if (!subconName) return null;
     const matIds = new Set();
+    const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    const normTarget = norm(subconName);
 
     // 1. Lọc từ các đơn đặt hàng (PO) đã gán cho thầu phụ này
     const pos = ECO_Storage.getPOs();
     pos.forEach(p => {
-      if (p.subconName === subconName && p.items) {
-        p.items.forEach(item => {
-          if (item.matId) matIds.add(item.matId);
-        });
+      if (p.subconName && p.items) {
+        const subconNames = p.subconName.split(', ').map(x => norm(x));
+        if (subconNames.includes(normTarget)) {
+          p.items.forEach(item => {
+            if (item.matId) matIds.add(item.matId);
+          });
+        }
       }
     });
 
     // 2. Lọc từ bảng định mức BOQ đã phân công cho thầu phụ này
     const boq = (typeof ECO_BOQStorage !== 'undefined') ? ECO_BOQStorage.getOrSeedBOQ() : [];
-    const subconBoqIds = new Set(boq.filter(b => b.subconName === subconName).map(b => b.id));
+    const subconBoqIds = new Set(boq.filter(b => b.subconName && norm(b.subconName) === normTarget).map(b => b.id));
     const materials = ECO_Storage.getMaterials();
     materials.forEach(m => {
       if (m.boqItemId && subconBoqIds.has(m.boqItemId)) {
@@ -2698,7 +3122,13 @@ const KhoModule = {
   viewLogDetail(id) {
     const log = ECO_Storage.getInventoryLogs().find(l => l.id == id);
     if (!log) return;
-    const canEdit = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
+    const isSuper = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
+    const isSub = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSubcontractor();
+    const user = typeof ECO_Auth !== 'undefined' ? ECO_Auth.user() : null;
+    const subconName = (user && window.subcontractorsData && window.subcontractorsData[user.subId]) ? window.subcontractorsData[user.subId].name : '';
+    const norm = (s) => String(s || '').trim().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[đĐ]/g, 'd');
+    const isOwnLog = isSub && subconName && log.subconName && (norm(log.subconName) === norm(subconName));
+    const canEdit = isSuper || (typeof ECO_Auth !== 'undefined' && ECO_Auth.can('edit', 'kho') && isOwnLog);
     ECO_UI.openModal('Chi tiết Phiếu ' + (log.type === 'in' ? 'Nhập' : 'Xuất') + ' Kho', `
       <div style="display:grid;grid-template-columns:repeat(${log.type === 'in' ? 4 : 3}, 1fr);gap:12px;margin-bottom:20px;">
         <div class="eco-kho-stat"><div class="eco-kho-stat-label">Ngày thực hiện</div><div style="font-weight:700;margin-top:4px;">${ECO_UI.fmtDate(log.date)}</div></div>
@@ -4255,13 +4685,13 @@ const TienDoModule = {
     if (statsGrid) statsGrid.innerHTML = statsHtml;
 
     // Render Table Content
-    const isSuperAdmin = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
+    const isBCH = typeof ECO_Auth !== 'undefined' && ECO_Auth.roleInfo()?.group === 'command';
     const tablePanel = document.querySelector('#schedule .content-table-panel');
     if (tablePanel) {
       tablePanel.innerHTML = `
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
           <span class="label" style="margin:0;">Bảng Tiến Độ Hạng Mục Chi Tiết</span>
-          ${isSuperAdmin ? `<button onclick="TienDoModule.addProgressItem()" class="btn btn-outline btn-blue" style="font-size:0.8rem;padding:6px 14px;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thêm tiến độ</button>` : ''}
+          ${isBCH ? `<button onclick="TienDoModule.addProgressItem()" class="btn btn-outline btn-blue" style="font-size:0.8rem;padding:6px 14px;"><i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thêm tiến độ</button>` : ''}
         </div>
         <div class="table-container" style="margin:0;border-radius:0;">
           <table class="tech-table">
@@ -4271,14 +4701,16 @@ const TienDoModule = {
                 <th>Hệ Thống</th>
                 <th>Nhà Thầu Phụ</th>
                 <th>Khu vực thi công</th>
+                <th>Ngày Kết Thúc</th>
+                <th>Ngày Hoàn Thành</th>
                 <th style="text-align:right;width:120px;">% Hoàn Thành</th>
                 <th style="width:130px;text-align:center;">Trạng Thái</th>
-                ${isSuperAdmin ? `<th style="width:100px;text-align:center;">Thao tác</th>` : ''}
+                ${isBCH ? `<th style="width:100px;text-align:center;">Thao tác</th>` : ''}
               </tr>
             </thead>
             <tbody>
               ${list.length === 0 
-                ? `<tr><td colspan="${isSuperAdmin ? 7 : 6}" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Chưa có dữ liệu tiến độ thi công.</td></tr>`
+                ? `<tr><td colspan="${isBCH ? 9 : 8}" style="text-align:center;padding:24px;color:#94A3B8;font-size:0.85rem;">Chưa có dữ liệu tiến độ thi công.</td></tr>`
                 : list.map(item => {
                     let badgeClass = 'badge-active';
                     if (item.status === 'BỊ TRỄ') badgeClass = 'badge-alert';
@@ -4290,9 +4722,11 @@ const TienDoModule = {
                         <td>${item.system || '—'}</td>
                         <td>${item.subcontractor || '—'}</td>
                         <td>${item.area || '—'}</td>
+                        <td>${item.endDate ? ECO_UI.fmtDate(item.endDate) : '—'}</td>
+                        <td>${item.completionDate ? ECO_UI.fmtDate(item.completionDate) : '—'}</td>
                         <td style="text-align:right;font-weight:700;">${item.progress}%</td>
                         <td style="text-align:center;"><span class="badge ${badgeClass}">${item.status}</span></td>
-                        ${isSuperAdmin ? `
+                        ${isBCH ? `
                           <td style="text-align:center;">
                             <div style="display:flex;gap:6px;justify-content:center;">
                               <button onclick="TienDoModule.editProgressItem(${item.id})" class="btn btn-outline" style="font-size:0.75rem;padding:4px 8px;border-color:rgba(0,86,255,0.2);color:#0056FF;" title="Sửa"><i data-lucide="edit-2" style="width:12px;height:12px;"></i></button>
@@ -4312,16 +4746,18 @@ const TienDoModule = {
   },
 
   addProgressItem() {
-    if (typeof ECO_Auth !== 'undefined' && !ECO_Auth.isSuperAdmin()) {
-      ECO_UI.toast('Chỉ quản trị viên hệ thống mới có quyền thêm tiến độ!', 'error');
+    const isBCH = typeof ECO_Auth !== 'undefined' && ECO_Auth.roleInfo()?.group === 'command';
+    if (!isBCH) {
+      ECO_UI.toast('Chỉ tài khoản Ban Chỉ Huy mới có quyền thêm tiến độ!', 'error');
       return;
     }
     this.openFormModal();
   },
 
   editProgressItem(id) {
-    if (typeof ECO_Auth !== 'undefined' && !ECO_Auth.isSuperAdmin()) {
-      ECO_UI.toast('Chỉ quản trị viên hệ thống mới có quyền sửa tiến độ!', 'error');
+    const isBCH = typeof ECO_Auth !== 'undefined' && ECO_Auth.roleInfo()?.group === 'command';
+    if (!isBCH) {
+      ECO_UI.toast('Chỉ tài khoản Ban Chỉ Huy mới có quyền sửa tiến độ!', 'error');
       return;
     }
     const item = ECO_Storage.getProgress().find(x => x.id === id);
@@ -4362,6 +4798,16 @@ const TienDoModule = {
       </div>
       <div class="eco-form-row">
         <div class="eco-form-group">
+          <label>Ngày kết thúc</label>
+          <input id="p-end-date" type="date" class="eco-input" value="${isEdit && item.endDate ? item.endDate : ''}">
+        </div>
+        <div class="eco-form-group">
+          <label>Ngày hoàn thành</label>
+          <input id="p-completion-date" type="date" class="eco-input" value="${isEdit && item.completionDate ? item.completionDate : ''}">
+        </div>
+      </div>
+      <div class="eco-form-row">
+        <div class="eco-form-group">
           <label>% Hoàn thành (0 - 100) *</label>
           <input id="p-progress" type="number" class="eco-input" min="0" max="100" value="${isEdit ? item.progress : 0}">
         </div>
@@ -4383,6 +4829,8 @@ const TienDoModule = {
     const system = document.getElementById('p-system').value;
     const subcontractor = document.getElementById('p-subcon').value;
     const area = document.getElementById('p-area').value.trim();
+    const endDate = document.getElementById('p-end-date').value || null;
+    const completionDate = document.getElementById('p-completion-date').value || null;
     const progress = parseInt(document.getElementById('p-progress').value) || 0;
     const status = document.getElementById('p-status').value;
 
@@ -4396,6 +4844,8 @@ const TienDoModule = {
         item.system = system;
         item.subcontractor = subcontractor;
         item.area = area;
+        item.endDate = endDate;
+        item.completionDate = completionDate;
         item.progress = Math.min(100, Math.max(0, progress));
         item.status = status;
       }
@@ -4406,6 +4856,8 @@ const TienDoModule = {
         system,
         subcontractor,
         area,
+        endDate,
+        completionDate,
         progress: Math.min(100, Math.max(0, progress)),
         status
       });
@@ -4422,8 +4874,9 @@ const TienDoModule = {
   },
 
   async deleteProgressItem(id) {
-    if (typeof ECO_Auth !== 'undefined' && !ECO_Auth.isSuperAdmin()) {
-      ECO_UI.toast('Chỉ quản trị viên hệ thống mới có quyền xóa tiến độ!', 'error');
+    const isBCH = typeof ECO_Auth !== 'undefined' && ECO_Auth.roleInfo()?.group === 'command';
+    if (!isBCH) {
+      ECO_UI.toast('Chỉ tài khoản Ban Chỉ Huy mới có quyền xóa tiến độ!', 'error');
       return;
     }
     if (!confirm('Bạn có chắc chắn muốn xóa hạng mục tiến độ này?')) return;
@@ -4438,3 +4891,537 @@ const TienDoModule = {
   }
 };
 window.TienDoModule = TienDoModule;
+
+const MaterialsAreaModule = {
+  _filterArea: '',
+  _filterAreaSystem: '',
+  _filterAreaSubcon: '',
+  _filterAreaPo: '',
+
+  _setAreaFilter(val) {
+    this._filterArea = val;
+    this.render();
+  },
+  _setAreaSystemFilter(val) {
+    this._filterAreaSystem = val;
+    this.render();
+  },
+  _setAreaSubconFilter(val) {
+    this._filterAreaSubcon = val;
+    this.render();
+  },
+  _setAreaPoFilter(val) {
+    this._filterAreaPo = val;
+    this.render();
+  },
+  _clearAreaFilters() {
+    this._filterArea = '';
+    this._filterAreaSystem = '';
+    this._filterAreaSubcon = '';
+    this._filterAreaPo = '';
+    this.render();
+  },
+
+  addMaterialArea() {
+    const pos = ECO_Storage.getPOs();
+    if (pos.length === 0) {
+      ECO_UI.toast('Chưa có đơn hàng (PO) nào trong hệ thống để thêm vật tư!', 'error');
+      return;
+    }
+    const materials = ECO_Storage.getMaterials() || [];
+    const areas = [...new Set(
+      pos.flatMap(p => (p.items || []).map(it => (it.area || 'Chung').trim()))
+    )].sort();
+
+    ECO_UI.openModal('Thêm vật tư đặt hàng theo Khu vực thi công', `
+      <div class="eco-form-group">
+        <label>Chọn Đơn đặt hàng (PO) *</label>
+        <select id="ma-poId" class="eco-select" style="width:100%;">
+          ${pos.map(p => `<option value="${p.id}">${p.poNo} (${p.supplier})</option>`).join('')}
+        </select>
+      </div>
+      <div class="eco-form-group">
+        <label>Chọn Vật tư *</label>
+        <select id="ma-matId" class="eco-select" style="width:100%;" onchange="MaterialsAreaModule._onModalMaterialChange(this.value)">
+          <option value="">-- Chọn vật tư sẵn có --</option>
+          ${materials.map(m => `<option value="${m.id}" data-unit="${m.unit || ''}">[${m.code}] ${m.name} (${m.unit})</option>`).join('')}
+          <option value="new" style="font-weight:bold;color:#0056FF;">+ Tự nhập vật tư mới</option>
+        </select>
+      </div>
+
+      <!-- New Material Section (hidden by default) -->
+      <div id="ma-new-mat-section" style="display:none;background:rgba(0,86,255,0.03);border:1px solid rgba(0,86,255,0.12);border-radius:10px;padding:12px;margin-bottom:14px;">
+        <div style="font-size:0.8rem;font-weight:700;color:#0056FF;margin-bottom:8px;text-transform:uppercase;letter-spacing:0.04em;">Thông tin vật tư mới</div>
+        <div class="eco-form-row">
+          <div class="eco-form-group">
+            <label>Mã vật tư *</label>
+            <input id="ma-new-code" class="eco-input" placeholder="VD: VT-001">
+          </div>
+          <div class="eco-form-group">
+            <label>Đơn vị tính *</label>
+            <input id="ma-new-unit" class="eco-input" placeholder="VD: m, kg, cái...">
+          </div>
+        </div>
+        <div class="eco-form-group" style="margin-top:8px;">
+          <label>Tên vật tư (quy cách chi tiết) *</label>
+          <input id="ma-new-name" class="eco-input" placeholder="VD: Ống nhựa uPVC D34">
+        </div>
+      </div>
+
+      <div class="eco-form-group">
+        <label>Chọn Khu vực thi công *</label>
+        ${renderAreaCheckboxes('Chung', false)}
+      </div>
+      <div class="eco-form-row">
+        <div class="eco-form-group">
+          <label>Chi tiết</label>
+          <input id="ma-detail" class="eco-input" placeholder="VD: Phòng bơm, tầng 2...">
+        </div>
+        <div class="eco-form-group">
+          <label>Số lượng đặt hàng *</label>
+          <input id="ma-qty" type="number" class="eco-input" min="0.001" step="any" placeholder="Nhập số lượng...">
+        </div>
+      </div>
+      <div class="eco-form-row">
+        <div class="eco-form-group">
+          <label>Quy cách / Ghi chú thêm</label>
+          <input id="ma-variant" class="eco-input" placeholder="Tiêu chuẩn, dày 10mm..." value="Tiêu chuẩn">
+        </div>
+      </div>
+    `, `
+      <button onclick="ECO_UI.closeModal()" class="btn btn-outline" style="padding:9px 20px;">Hủy</button>
+      <button onclick="MaterialsAreaModule._saveMaterialArea()" class="btn btn-primary" style="padding:9px 20px;">Lưu</button>
+    `, { size: 'md' });
+  },
+
+  _onModalMaterialChange(val) {
+    const newSection = document.getElementById('ma-new-mat-section');
+    if (newSection) {
+      newSection.style.display = val === 'new' ? 'block' : 'none';
+    }
+  },
+
+  async _saveMaterialArea() {
+    const poId = document.getElementById('ma-poId').value;
+    const matIdVal = document.getElementById('ma-matId').value;
+    const area = Array.from(document.querySelectorAll('.area-cb:checked')).map(cb => cb.value).join(', ') || 'Chung';
+    const detail = document.getElementById('ma-detail').value.trim();
+    const qty = parseFloat(document.getElementById('ma-qty').value) || 0;
+    const variant = document.getElementById('ma-variant').value.trim() || 'Tiêu chuẩn';
+
+    if (!poId) { ECO_UI.toast('Vui lòng chọn PO', 'error'); return; }
+    if (!matIdVal) { ECO_UI.toast('Vui lòng chọn vật tư', 'error'); return; }
+    if (qty <= 0) { ECO_UI.toast('Số lượng đặt hàng phải lớn hơn 0', 'error'); return; }
+
+    const allPos = ECO_Storage.getPOs();
+    const po = allPos.find(p => String(p.id) === String(poId));
+    if (!po) {
+      ECO_UI.toast('Không tìm thấy Đơn đặt hàng tương ứng!', 'error');
+      return;
+    }
+
+    let matId = null;
+    let matName = '';
+    let matUnit = '';
+
+    if (matIdVal === 'new') {
+      const code = document.getElementById('ma-new-code').value.trim();
+      const name = document.getElementById('ma-new-name').value.trim();
+      const unit = document.getElementById('ma-new-unit').value.trim();
+
+      if (!code) { ECO_UI.toast('Vui lòng nhập Mã vật tư mới', 'error'); return; }
+      if (!name) { ECO_UI.toast('Vui lòng nhập Tên vật tư mới', 'error'); return; }
+      if (!unit) { ECO_UI.toast('Vui lòng nhập Đơn vị tính mới', 'error'); return; }
+
+      const materials = ECO_Storage.getMaterials() || [];
+      let existingMat = materials.find(m => 
+        m.code.toLowerCase() === code.toLowerCase() || 
+        m.name.toLowerCase() === name.toLowerCase()
+      );
+
+      if (existingMat) {
+        matId = existingMat.id;
+        matName = existingMat.name;
+        matUnit = existingMat.unit;
+      } else {
+        const nextId = ECO_Storage.nextId(materials);
+        const newMat = {
+          id: nextId,
+          code: code,
+          name: name,
+          unit: unit,
+          system: po.system || 'Tổng hợp',
+          boqItemId: null
+        };
+        materials.push(newMat);
+        await ECO_Storage.saveMaterials(materials);
+
+        const suppliers = ECO_Storage.getSuppliers() || [];
+        const supplier = suppliers.find(s => s.companyName === po.supplier);
+        if (supplier) {
+          if (!supplier.providedMaterials) supplier.providedMaterials = [];
+          supplier.providedMaterials.push(newMat.id);
+          await ECO_Storage.saveSuppliers(suppliers);
+        }
+
+        matId = newMat.id;
+        matName = newMat.name;
+        matUnit = newMat.unit;
+      }
+    } else {
+      matId = parseInt(matIdVal);
+      const materials = ECO_Storage.getMaterials() || [];
+      const mat = materials.find(m => m.id === matId);
+      if (mat) {
+        matName = mat.name;
+        matUnit = mat.unit;
+      }
+    }
+
+    if (!po.items) po.items = [];
+    
+    const existingItem = po.items.find(it => 
+      String(it.matId) === String(matId) && 
+      (it.area || 'Chung').trim().toLowerCase() === area.toLowerCase() &&
+      (it.detail || '').trim().toLowerCase() === detail.toLowerCase()
+    );
+
+    if (existingItem) {
+      existingItem.qty += qty;
+    } else {
+      po.items.push({
+        matId: matId,
+        qty: qty,
+        variant: variant,
+        name: matName,
+        unit: matUnit,
+        area: area,
+        detail: detail
+      });
+    }
+
+    try {
+      await ECO_Storage.savePOs(allPos);
+      ECO_UI.closeModal();
+      ECO_UI.toast(`Đã thêm vật tư thành công vào đơn hàng ${po.poNo} khu vực ${area}`, 'success');
+      this.render();
+    } catch (err) {
+      console.error(err);
+      ECO_UI.toast('Thêm vật tư thất bại!', 'error');
+    }
+  },
+
+
+  _viewMode: 'detail',
+  toggleViewMode() {
+    this._viewMode = this._viewMode === 'aggregate' ? 'detail' : 'aggregate';
+    this.render();
+  },
+
+  render() {
+    const el = document.getElementById('materials-area-content');
+    if (!el) return;
+    el.innerHTML = this._renderAreaDetails();
+    if (window.lucide && lucide.createIcons) lucide.createIcons();
+    if (window.updateContentTableHeights) setTimeout(window.updateContentTableHeights, 0);
+  },
+
+  quickEditArea(poNo, matId, currentArea) {
+    if (!window.ECO_Auth || !ECO_Auth.isSuperAdmin()) {
+      ECO_UI.toast('Chỉ quản trị viên mới có quyền sửa khu vực thi công!', 'error');
+      return;
+    }
+    const allPos = ECO_Storage.getPOs();
+    const po = allPos.find(p => p.poNo === poNo);
+    if (!po) {
+      ECO_UI.toast(`Không tìm thấy đơn hàng ${poNo}`, 'error');
+      return;
+    }
+    const item = (po.items || []).find(it => it.matId === matId && (it.area || 'Chung').trim() === currentArea.trim());
+    if (!item) {
+      ECO_UI.toast('Không tìm thấy vật tư tương ứng trong đơn hàng', 'error');
+      return;
+    }
+    
+    const currentAreaVal = item.area || 'Chung';
+    const currentDetailVal = item.detail || '';
+
+    ECO_UI.openModal('Chỉnh sửa Khu vực thi công & Chi tiết', `
+      <div class="eco-form-group">
+        <label>Đơn hàng: <strong>${poNo}</strong></label>
+      </div>
+      <div class="eco-form-group">
+        <label>Vật tư: <strong>${item.name}</strong></label>
+      </div>
+      <div class="eco-form-group">
+        <label>Chọn Khu vực thi công *</label>
+        ${renderAreaCheckboxes(currentAreaVal, false)}
+      </div>
+      <div class="eco-form-group">
+        <label>Chi tiết</label>
+        <input id="quick-edit-detail" class="eco-input" value="${currentDetailVal}" placeholder="VD: Phòng bơm, tầng 2...">
+      </div>
+    `, `
+      <button onclick="ECO_UI.closeModal()" class="btn btn-outline" style="padding:9px 20px;">Hủy</button>
+      <button id="quick-edit-save-btn" class="btn btn-primary" style="padding:9px 20px;">Lưu</button>
+    `, { size: 'md' });
+
+    document.getElementById('quick-edit-save-btn').onclick = async () => {
+      const selectedAreas = Array.from(document.querySelectorAll('.area-cb:checked')).map(cb => cb.value).join(', ') || 'Chung';
+      const detail = document.getElementById('quick-edit-detail').value.trim();
+
+      item.area = selectedAreas;
+      item.detail = detail;
+
+      try {
+        await ECO_Storage.savePOs(allPos);
+        ECO_UI.closeModal();
+        ECO_UI.toast('Đã cập nhật Khu vực thi công & Chi tiết thành công!', 'success');
+        MaterialsAreaModule.render();
+      } catch (err) {
+        ECO_UI.toast('Cập nhật thất bại!', 'error');
+      }
+    };
+  },
+
+  _renderAreaDetails() {
+    const allPos = ECO_Storage.getPOs();
+    const areaItems = [];
+
+    const materials = ECO_Storage.getMaterials() || [];
+    const matMap = {};
+    materials.forEach(m => { matMap[m.id] = m; });
+
+    allPos.forEach(p => {
+      (p.items || []).forEach(it => {
+        const areaName = (it.area || 'Chung').trim();
+        const mat = matMap[it.matId];
+        areaItems.push({
+          area: areaName,
+          detail: it.detail || '—',
+          code: (mat && mat.code) || '—',
+          name: it.name || (mat && mat.name) || '—',
+          unit: it.unit || (mat && mat.unit) || '—',
+          qty: parseFloat(it.qty) || 0,
+          receivedQty: parseFloat(it.receivedQty) || 0,
+          system: p.system || '',
+          subconName: p.subconName || 'Chung',
+          poNo: p.poNo || '',
+          supplier: p.supplier || '',
+          matId: it.matId,
+          isBoq: mat && mat.boqItemId ? true : false
+        });
+      });
+    });
+
+    const areas = [...new Set(areaItems.map(x => x.area).filter(Boolean))].sort();
+    const systems = [...new Set(areaItems.map(x => x.system).filter(Boolean))].sort();
+    const subcons = [...new Set(areaItems.map(x => x.subconName).filter(Boolean))].sort();
+    const pos = [...new Set(areaItems.map(x => x.poNo).filter(Boolean))].sort();
+
+    const activeArea = this._filterArea || '';
+    const activeSys = this._filterAreaSystem || '';
+    const activeSub = this._filterAreaSubcon || '';
+    const activePo = this._filterAreaPo || '';
+
+    let filtered = areaItems;
+    if (activeArea) filtered = filtered.filter(x => x.area === activeArea);
+    if (activeSys) filtered = filtered.filter(x => x.system === activeSys);
+    if (activeSub) filtered = filtered.filter(x => x.subconName === activeSub);
+    if (activePo) filtered = filtered.filter(x => x.poNo === activePo);
+
+    filtered.sort((a, b) => {
+      const areaCompare = a.area.localeCompare(b.area, 'vi', { sensitivity: 'base' });
+      if (areaCompare !== 0) return areaCompare;
+      return a.code.localeCompare(b.code, 'vi', { numeric: true });
+    });
+
+    const totalMats = [...new Set(filtered.map(x => x.code))].length;
+    const totalQty = filtered.reduce((sum, x) => sum + x.qty, 0);
+    const totalRec = filtered.reduce((sum, x) => sum + x.receivedQty, 0);
+    const totalPos = [...new Set(filtered.map(x => x.poNo))].length;
+
+    const hasFilter = activeArea || activeSys || activeSub || activePo;
+    const isAdmin = typeof ECO_Auth !== 'undefined' && ECO_Auth.isSuperAdmin();
+    const isAggMode = this._viewMode === 'aggregate';
+
+    let tableHeader = '';
+    let tableBody = '';
+
+    if (isAggMode) {
+      const aggregated = {};
+      filtered.forEach(it => {
+        const key = (it.matId || (it.code + '|' + it.name)) + '|' + it.system + '|' + it.subconName;
+        if (!aggregated[key]) {
+          aggregated[key] = {
+            code: it.code,
+            name: it.name,
+            unit: it.unit,
+            qty: 0,
+            receivedQty: 0,
+            system: it.system,
+            subconName: it.subconName,
+            poNos: new Set()
+          };
+        }
+        aggregated[key].qty += it.qty;
+        aggregated[key].receivedQty += it.receivedQty;
+        if (it.poNo) aggregated[key].poNos.add(it.poNo);
+      });
+
+      const aggList = Object.values(aggregated);
+      aggList.sort((a, b) => a.code.localeCompare(b.code, 'vi', { numeric: true }));
+
+      tableHeader = `
+        <tr>
+          <th style="width:110px;">Mã vật tư</th>
+          <th>Tên vật tư (quy cách chi tiết)</th>
+          <th style="width:70px;text-align:center;">ĐVT</th>
+          <th style="width:120px;text-align:right;">Tổng SL đặt</th>
+          <th style="width:120px;text-align:right;">Tổng đã nhập</th>
+          <th style="width:100px;text-align:center;">% Hoàn thành</th>
+          <th style="width:130px;">Hệ thống</th>
+          <th style="width:120px;">Nhà thầu phụ</th>
+          <th>Các PO liên quan</th>
+        </tr>
+      `;
+
+      tableBody = aggList.length === 0
+        ? ECO_UI.tableEmpty(9, 'Không tìm thấy dữ liệu vật tư lũy kế.')
+        : aggList.map(item => {
+            const ratio = item.qty > 0 ? Math.round((item.receivedQty / item.qty) * 100) : 0;
+            let ratioBadge = 'badge-neutral';
+            if (ratio >= 100) ratioBadge = 'badge-success';
+            else if (ratio > 0) ratioBadge = 'badge-orange';
+            
+            return `
+              <tr>
+                <td style="font-weight:700;color:#0056FF;">${item.code}</td>
+                <td style="font-weight:600;">${item.name}</td>
+                <td style="text-align:center;">${item.unit}</td>
+                <td style="text-align:right;font-weight:700;color:#0F172A;">${ECO_UI.fmtNum(item.qty, 1)}</td>
+                <td style="text-align:right;font-weight:700;color:#10B981;">${ECO_UI.fmtNum(item.receivedQty, 1)}</td>
+                <td style="text-align:center;"><span class="badge ${ratioBadge}">${ratio}%</span></td>
+                <td><span style="font-size:0.8rem;background:rgba(0,51,160,0.06);color:#0033A0;padding:2px 6px;border-radius:4px;font-weight:600;">${item.system}</span></td>
+                <td><span style="font-size:0.8rem;background:rgba(0,86,255,0.08);color:#0033A0;padding:2px 6px;border-radius:4px;font-weight:600;">${item.subconName}</span></td>
+                <td style="font-size:0.82rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:#64748B;" title="${[...item.poNos].join(', ')}">${[...item.poNos].join(', ') || '—'}</td>
+              </tr>
+            `;
+          }).join('');
+    } else {
+      tableHeader = `
+        <tr>
+          <th style="width:180px;">Khu vực thi công</th>
+          <th style="width:150px;">Chi tiết</th>
+          <th style="width:110px;">Mã vật tư</th>
+          <th>Tên vật tư (quy cách chi tiết)</th>
+          <th style="width:70px;text-align:center;">ĐVT</th>
+          <th style="width:120px;text-align:right;">SL đặt hàng</th>
+          <th style="width:120px;text-align:right;">Đã nhập kho</th>
+          <th style="width:130px;">Hệ thống</th>
+          <th style="width:120px;">Nhà thầu phụ</th>
+          <th style="width:120px;text-align:center;">Số PO</th>
+        </tr>
+      `;
+
+      tableBody = filtered.length === 0
+        ? ECO_UI.tableEmpty(10, 'Không tìm thấy dữ liệu vật tư theo điều kiện lọc.')
+        : filtered.map(item => {
+            const boqBadge = item.isBoq ? ' <span class="badge badge-success" style="font-size: 0.65rem; margin-left: 4px;">BOQ</span>' : ' <span class="badge badge-orange" style="font-size: 0.65rem; margin-left: 4px;">TỰ NHẬP</span>';
+            return `
+              <tr>
+                <td ${isAdmin ? `onclick="MaterialsAreaModule.quickEditArea('${item.poNo}', ${item.matId}, '${item.area}')" style="font-weight:700;color:#0033A0;cursor:pointer;background:rgba(0,51,160,0.03);" title="Nhấp để sửa nhanh Khu vực thi công"` : 'style="font-weight:700;color:#0033A0;"'}>
+                  ${item.area}
+                  ${isAdmin ? ` <i data-lucide="edit-2" style="width:11px;height:11px;color:#94A3B8;margin-left:4px;vertical-align:middle;display:inline-block;"></i>` : ''}
+                </td>
+                <td style="font-weight:600;color:#475569;">${item.detail || '—'}</td>
+                <td style="font-weight:700;color:#0056FF;">${item.code}${boqBadge}</td>
+                <td style="font-weight:600;">${item.name}</td>
+                <td style="text-align:center;">${item.unit}</td>
+                <td style="text-align:right;font-weight:700;color:#0F172A;">${ECO_UI.fmtNum(item.qty, 1)}</td>
+                <td style="text-align:right;font-weight:700;color:#10B981;">${ECO_UI.fmtNum(item.receivedQty, 1)}</td>
+                <td><span style="font-size:0.8rem;background:rgba(0,51,160,0.06);color:#0033A0;padding:2px 6px;border-radius:4px;font-weight:600;">${item.system}</span></td>
+                <td><span style="font-size:0.8rem;background:rgba(0,86,255,0.08);color:#0033A0;padding:2px 6px;border-radius:4px;font-weight:600;">${item.subconName}</span></td>
+                <td style="font-weight:700;color:#0056FF;text-align:center;">${item.poNo}</td>
+              </tr>`;
+          }).join('');
+    }
+
+    return `
+      <!-- KPI Stats Grid -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 20px; width: 100%;">
+        <div class="glass-panel" style="padding: 16px; border-left: 4px solid #0056FF; background: rgba(255,255,255,0.4);">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Tổng chủng loại</span>
+          <div style="font-size: 1.5rem; font-weight: 800; color: #0F172A; margin-top: 4px;">${totalMats} loại</div>
+        </div>
+        <div class="glass-panel" style="padding: 16px; border-left: 4px solid #10B981; background: rgba(255,255,255,0.4);">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Tổng số lượng đặt</span>
+          <div style="font-size: 1.5rem; font-weight: 800; color: #10B981; margin-top: 4px;">${ECO_UI.fmtNum(totalQty, 1)}</div>
+        </div>
+        <div class="glass-panel" style="padding: 16px; border-left: 4px solid #0EA5E9; background: rgba(255,255,255,0.4);">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Đã nhập kho thực tế</span>
+          <div style="font-size: 1.5rem; font-weight: 800; color: #0EA5E9; margin-top: 4px;">${ECO_UI.fmtNum(totalRec, 1)}</div>
+        </div>
+        <div class="glass-panel" style="padding: 16px; border-left: 4px solid #F59E0B; background: rgba(255,255,255,0.4);">
+          <span style="font-size: 0.75rem; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.04em;">Số lượng PO liên quan</span>
+          <div style="font-size: 1.5rem; font-weight: 800; color: #F59E0B; margin-top: 4px;">${totalPos} đơn</div>
+        </div>
+      </div>
+
+      <!-- Main Data Panel -->
+      <div class="glass-panel content-table-panel">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid rgba(255,255,255,0.5);flex-wrap:wrap;gap:12px;">
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+            <h3 style="font-size:1rem;font-weight:700;margin:0;margin-right:8px;">
+              ${isAggMode ? 'Thống kê lũy kế tổng hợp vật tư đặt hàng' : 'Chi tiết vật tư theo khu vực'}
+            </h3>
+            
+            <select onchange="MaterialsAreaModule._setAreaFilter(this.value)" style="font-size:0.82rem;padding:6px 12px;border:1px solid rgba(0,86,255,0.2);border-radius:8px;background:rgba(0,86,255,0.03);color:#0033A0;font-weight:600;cursor:pointer;outline:none;">
+              <option value="">-- Lọc Khu vực --</option>
+              ${areas.map(a => `<option value="${a}"${activeArea === a ? ' selected' : ''}>${a}</option>`).join('')}
+            </select>
+
+            <select onchange="MaterialsAreaModule._setAreaSystemFilter(this.value)" style="font-size:0.82rem;padding:6px 12px;border:1px solid rgba(0,86,255,0.2);border-radius:8px;background:rgba(0,86,255,0.03);color:#0033A0;font-weight:600;cursor:pointer;outline:none;">
+              <option value="">-- Lọc Hệ thống --</option>
+              ${systems.map(s => `<option value="${s}"${activeSys === s ? ' selected' : ''}>${s}</option>`).join('')}
+            </select>
+
+            <select onchange="MaterialsAreaModule._setAreaSubconFilter(this.value)" style="font-size:0.82rem;padding:6px 12px;border:1px solid rgba(0,86,255,0.2);border-radius:8px;background:rgba(0,86,255,0.03);color:#0033A0;font-weight:600;cursor:pointer;outline:none;">
+              <option value="">-- Lọc Thầu phụ --</option>
+              ${subcons.map(s => `<option value="${s}"${activeSub === s ? ' selected' : ''}>${s}</option>`).join('')}
+            </select>
+
+            <select onchange="MaterialsAreaModule._setAreaPoFilter(this.value)" style="font-size:0.82rem;padding:6px 12px;border:1px solid rgba(0,86,255,0.2);border-radius:8px;background:rgba(0,86,255,0.03);color:#0033A0;font-weight:600;cursor:pointer;outline:none;">
+              <option value="">-- Lọc Số PO --</option>
+              ${pos.map(p => `<option value="${p}"${activePo === p ? ' selected' : ''}>${p}</option>`).join('')}
+            </select>
+
+            ${hasFilter ? `<button onclick="MaterialsAreaModule._clearAreaFilters()" style="background:none;border:none;color:#E31837;cursor:pointer;font-size:0.8rem;font-weight:700;padding:4px 8px;" title="Xóa tất cả bộ lọc">✕ Xóa lọc</button>` : ''}
+          </div>
+          <div style="display:flex;gap:10px;">
+            <button class="btn btn-outline" onclick="MaterialsAreaModule.toggleViewMode()" style="font-size:0.85rem;padding:8px 18px;color:#0056FF;border-color:#0056FF;">
+              <i data-lucide="${isAggMode ? 'list' : 'line-chart'}" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i>
+              ${isAggMode ? 'Xem chi tiết PO' : 'Xem lũy kế tổng hợp'}
+            </button>
+            <button class="btn btn-outline btn-blue" data-perm="po:edit" onclick="MaterialsAreaModule.addMaterialArea()" style="font-size:0.85rem;padding:8px 18px;color:#0056FF;border-color:#0056FF;">
+              <i data-lucide="plus" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Thêm mới
+            </button>
+            <button class="btn btn-outline" onclick="POModule.exportAllPosToExcel()" style="font-size:0.85rem;padding:8px 18px;color:#10B981;border-color:#10B981;"><i data-lucide="file-up" style="width:14px;height:14px;vertical-align:middle;display:inline-block;margin-right:4px;"></i> Xuất Excel</button>
+          </div>
+        </div>
+        
+        <div class="table-container" style="margin:0;border-radius:0;">
+          <table class="tech-table">
+            <thead>
+              ${tableHeader}
+            </thead>
+            <tbody>
+              ${tableBody}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    `;
+  }
+};
+window.MaterialsAreaModule = MaterialsAreaModule;
