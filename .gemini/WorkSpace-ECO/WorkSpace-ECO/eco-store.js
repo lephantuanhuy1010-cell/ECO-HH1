@@ -105,6 +105,17 @@
             };
           });
         }
+        if (key === 'eco_inv_logs') {
+          camelRows = camelRows.map(log => {
+            const att = log.attachments || {};
+            return {
+              ...log,
+              deliveryNote: att.deliveryNote || null,
+              warehousePhotos: att.warehousePhotos || null,
+              dispatchSlip: att.dispatchSlip || null
+            };
+          });
+        }
         return camelRows;
       },
       async persist(key, val) {
@@ -151,6 +162,16 @@
             delete snakeVal.signedApprovedFile;
             delete snakeVal.signed_file;
             delete snakeVal.signedFile;
+          }
+          if (key === 'eco_inv_logs') {
+            const att = {};
+            if (val.deliveryNote) att.deliveryNote = val.deliveryNote;
+            if (val.warehousePhotos) att.warehousePhotos = val.warehousePhotos;
+            if (val.dispatchSlip) att.dispatchSlip = val.dispatchSlip;
+            snakeVal.attachments = att;
+            delete snakeVal.delivery_note;
+            delete snakeVal.warehouse_photos;
+            delete snakeVal.dispatch_slip;
           }
           const { error } = await sb.from(tableName).upsert(snakeVal);
           if (error) {
@@ -224,6 +245,21 @@
             return copy;
           });
         }
+        if (key === 'eco_inv_logs') {
+          snakeVals = snakeVals.map((row, idx) => {
+            const original = val[idx];
+            const copy = { ...row };
+            const att = {};
+            if (original.deliveryNote) att.deliveryNote = original.deliveryNote;
+            if (original.warehousePhotos) att.warehousePhotos = original.warehousePhotos;
+            if (original.dispatchSlip) att.dispatchSlip = original.dispatchSlip;
+            copy.attachments = att;
+            delete copy.delivery_note;
+            delete copy.warehouse_photos;
+            delete copy.dispatch_slip;
+            return copy;
+          });
+        }
         const currentIds = val.map(item => item.id).filter(id => id !== undefined && id !== null);
 
         // Xóa các dòng cũ không còn nằm trong mảng truyền lên
@@ -244,6 +280,7 @@
               return { ok: true };
             }
             console.error('[ECO_DB] Delete sync error:', delError);
+            return { ok: false, error: delError };
           }
         } else {
           const { error: delError } = await sb.from(tableName).delete().neq('id', '0');
@@ -255,6 +292,7 @@
               return { ok: true };
             }
             console.error('[ECO_DB] Delete clear error:', delError);
+            return { ok: false, error: delError };
           }
         }
 
